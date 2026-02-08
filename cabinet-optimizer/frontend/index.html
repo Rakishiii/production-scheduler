@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cabinet Optimizer</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <main class="min-h-screen grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+      <aside class="bg-slate-900 text-white p-6">
+        <div class="flex items-center gap-3 mb-8">
+          <div class="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center">
+            <span class="font-bold">CO</span>
+          </div>
+          <div>
+            <p class="text-lg font-semibold">Cabinet Optimizer</p>
+            <p class="text-xs text-slate-300">Dashboard</p>
+          </div>
+        </div>
+        <nav class="space-y-2 text-sm">
+          <button class="w-full text-left px-3 py-2 rounded-lg bg-slate-800">Home / Dashboard</button>
+          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Master Data</button>
+          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Orders</button>
+          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Resource Allocation</button>
+          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Production Scheduling</button>
+          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Optimization Settings</button>
+        </nav>
+      </aside>
+
+      <section class="p-6 lg:p-10">
+        <header class="mb-8">
+          <h1 class="text-2xl font-bold">Cabinet Manufacturing Optimization System</h1>
+          <p class="text-sm text-slate-600">
+            Click a module to open its tools. Start with Resource Allocation.
+          </p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <button
+            class="dashboard-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left hover:shadow-md"
+            data-target="calculatorPanel"
+          >
+            <p class="text-sm text-slate-500">Resource Allocation</p>
+            <h2 class="text-lg font-semibold mt-2">Production Calculator</h2>
+            <p class="text-xs text-slate-500 mt-2">
+              Estimate workers and production days for cabinet orders.
+            </p>
+          </button>
+
+          <button class="dashboard-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left hover:shadow-md">
+            <p class="text-sm text-slate-500">Orders Management</p>
+            <h2 class="text-lg font-semibold mt-2">Order Intake</h2>
+            <p class="text-xs text-slate-500 mt-2">Track incoming orders and priorities.</p>
+          </button>
+
+          <button class="dashboard-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left hover:shadow-md">
+            <p class="text-sm text-slate-500">Master Data</p>
+            <h2 class="text-lg font-semibold mt-2">Cabinet Profiles</h2>
+            <p class="text-xs text-slate-500 mt-2">Manage cabinet types and standards.</p>
+          </button>
+
+          <button class="dashboard-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left hover:shadow-md">
+            <p class="text-sm text-slate-500">Production Scheduling</p>
+            <h2 class="text-lg font-semibold mt-2">Scheduling Board</h2>
+            <p class="text-xs text-slate-500 mt-2">Plan daily workload and timeline.</p>
+          </button>
+
+          <button class="dashboard-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left hover:shadow-md">
+            <p class="text-sm text-slate-500">Optimization Settings</p>
+            <h2 class="text-lg font-semibold mt-2">Efficiency Controls</h2>
+            <p class="text-xs text-slate-500 mt-2">Adjust factors and assumptions.</p>
+          </button>
+        </div>
+
+        <section
+          id="calculatorPanel"
+          class="mt-10 bg-white border border-slate-200 rounded-xl p-6 shadow-sm hidden"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">Production Calculator</h3>
+              <p class="text-sm text-slate-600">
+                Estimate workers and production days for a cabinet order.
+              </p>
+            </div>
+            <button
+              id="closePanel"
+              class="text-sm text-slate-500 hover:text-slate-700"
+            >
+              Close
+            </button>
+          </div>
+
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="block">
+              <span class="text-sm font-medium">Cabinet type</span>
+              <select
+                id="cabinetType"
+                class="mt-1 w-full rounded-lg border border-slate-300 p-2"
+              >
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="text-sm font-medium">Quantity</span>
+              <input
+                id="quantity"
+                type="number"
+                min="1"
+                value="10"
+                class="mt-1 w-full rounded-lg border border-slate-300 p-2"
+              />
+            </label>
+
+            <div class="flex items-end">
+              <button
+                id="calculateBtn"
+                class="w-full rounded-lg bg-blue-600 text-white py-2 font-semibold hover:bg-blue-700"
+              >
+                Calculate
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="result"
+            class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm"
+          >
+            <p class="text-slate-600">Enter details and click Calculate.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
