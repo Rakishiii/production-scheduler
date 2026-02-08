@@ -41,9 +41,68 @@ def calculate_daily_progress(days):
     return 100 / days
 
 
+def calculate_scheduled_dates(completion_date, quantity, orders):
+    """Calculate realistic start date based on machine capacity."""
+    # Production stages and hours per cabinet
+    stages = {
+        "CNC Cutting": 2,    # 2 hours per cabinet
+        "CNC Edging": 2,     # 2 hours per cabinet  
+        "CNC Routing": 2,    # 2 hours per cabinet
+        "Assembly": 3,       # 3 hours per cabinet
+        "Packing": 1         # 1 hour per cabinet
+    }
+    
+    total_hours = sum(stages.values()) * quantity
+    machines_available = 6  # Total machines
+    work_hours_per_day = 8  # 8-hour workday
+    
+    # Calculate machine capacity usage per day from existing orders
+    daily_capacity = {}
+    for order in orders:
+        if order.get("status") != "Completed":
+            start = datetime.strptime(order["start_date"], "%Y-%m-%d").date()
+            end = datetime.strptime(order["completion_date"], "%Y-%m-%d").date()
+            days_span = (end - start).days + 1
+            
+            for i in range(days_span):
+                day = start + timedelta(days=i)
+                day_str = day.strftime("%Y-%m-%d")
+                daily_capacity[day_str] = daily_capacity.get(day_str, 0) + order["machines"]
+    
+    # Find earliest available start date
+    target_end = datetime.strptime(completion_date, "%Y-%m-%d").date()
+    days_needed = max(1, int(total_hours / (machines_available * work_hours_per_day)))
+    
+    # Work backwards from completion date to find start date
+    current_start = target_end - timedelta(days=days_needed)
+    current_date = datetime.now().date()
+    
+    # Ensure start date is not in the past
+    if current_start < current_date:
+        current_start = current_date
+    
+    # Check if we have capacity, if not, push start date earlier
+    machines_needed = 1
+    for i in range(days_needed):
+        check_date = (current_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        used = daily_capacity.get(check_date, 0)
+        if used + machines_needed > machines_available:
+            # Need to start earlier
+            current_start = current_start - timedelta(days=1)
+    
+    # Recalculate end date based on actual start
+    actual_end = current_start + timedelta(days=days_needed)
+    
+    # If calculated end is after requested completion, it's delayed
+    if actual_end > target_end:
+        actual_end = target_end  # Keep requested date, mark as priority
+    
+    return current_start.strftime("%Y-%m-%d"), actual_end.strftime("%Y-%m-%d")
+
+
 @app.route("/orders", methods=["GET"])
 def get_orders():
-    """Get all orders with calculated progress."""
+    """Get all orders with calculated progress, sorted by due date."""
     orders = load_orders()
     # Optional date override for demo/testing (YYYY-MM-DD)
     date_override = request.args.get("date")
@@ -75,6 +134,9 @@ def get_orders():
         order["is_priority"] = days_remaining <= 2
         order["machines"] = 6 if order["is_priority"] else 1
 
+    # Sort by earliest due date first (EDD scheduling)
+    orders.sort(key=lambda x: x["completion_date"])
+    
     return jsonify(orders)
 
 
@@ -95,10 +157,14 @@ def create_order():
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid quantity"}), 400
 
-    # Create order
+    # Create order with scheduled dates
     orders = load_orders()
-    today = datetime.now().strftime("%Y-%m-%d")
     completion_date = payload["completion_date"]
+    
+    # Calculate realistic start and end dates based on capacity
+    scheduled_start, scheduled_end = calculate_scheduled_dates(
+        completion_date, qty, orders
+    )
     
     order = {
         "id": len(orders) + 1,
@@ -106,8 +172,8 @@ def create_order():
         "cabinet_type": payload["cabinet_type"],
         "color": payload["color"],
         "quantity": qty,
-        "start_date": today,
-        "completion_date": completion_date,
+        "start_date": scheduled_start,
+        "completion_date": scheduled_end,
         "status": "In Progress",
         "progress": 0,
         "is_priority": False,

@@ -66,9 +66,15 @@ async function loadOrders() {
             <td class="p-2 no-print">
               <button
                 onclick='openProjectView(${JSON.stringify(order)})'
-                class="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200"
+                class="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 mr-2"
               >
                 View Project
+              </button>
+              <button
+                onclick='deleteOrder(${order.id})'
+                class="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200"
+              >
+                Delete
               </button>
             </td>
           </tr>
