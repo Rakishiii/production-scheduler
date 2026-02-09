@@ -1,10 +1,23 @@
 [
   {
-    "id": 2,
+    "id": 1,
     "customer_name": "raki",
     "cabinet_type": "Tall Cabinet",
-    "color": "AG-66",
-    "quantity": 7,
+    "color": "AG-62",
+    "quantity": 43,
+    "start_date": "2026-02-09",
+    "completion_date": "2026-02-19",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "MEDIUM",
+    "machines": 3
+  },
+  {
+    "id": 2,
+    "customer_name": "rasdasd",
+    "cabinet_type": "Hanging Cabinet",
+    "color": "AG-62",
+    "quantity": 12,
     "start_date": "2026-02-09",
     "completion_date": "2026-02-27",
     "status": "In Progress",

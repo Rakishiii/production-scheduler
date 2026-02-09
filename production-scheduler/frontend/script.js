@@ -1,9 +1,10 @@
 // Production Scheduler Frontend
-const BACKEND_URL = "http://127.0.0.1:5000";
+const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
 
 // Store machine schedule data globally
 let globalMachineSchedule = {};
 let globalAssignments = [];
+let globalOrders = [];  // Store all orders for priority comparison
 
 const orderForm = document.getElementById("orderForm");
 const ordersTable = document.getElementById("ordersTable");
@@ -30,9 +31,10 @@ async function loadOrders() {
     const machineSchedule = data.machine_schedule || {};
     const assignments = data.assignments || [];
     
-    // Store machine schedule and assignments globally for use in openProjectView
+    // Store everything globally for use in openProjectView
     globalMachineSchedule = machineSchedule;
     globalAssignments = assignments;
+    globalOrders = orders;
 
     if (!orders || orders.length === 0) {
       ordersTable.innerHTML =
@@ -47,14 +49,15 @@ async function loadOrders() {
             (1000 * 60 * 60 * 24)
         );
         const progressWidth = Math.min(100, order.progress);
-        const statusColor =
-          order.progress === 100
-            ? "text-white"
-            : "text-white";
+        const statusColor = "text-white";
         const statusBg = 
           order.progress === 100
             ? "#7B542F"
             : "#B6771D";
+        const statusText = 
+          order.progress === 100
+            ? "Completed"
+            : order.status;
         
         // Priority badge with 3 levels
         let priorityBadge = '';
@@ -70,7 +73,7 @@ async function loadOrders() {
           <tr class="border-b border-slate-200 hover:bg-slate-50">
             <td class="p-2">
               <span class="px-2 py-1 rounded-lg ${statusColor} text-xs font-semibold" style="background: ${statusBg};">
-                ${order.status}
+                ${statusText}
               </span>
             </td>
             <td class="p-2">${priorityBadge}</td>
@@ -157,6 +160,7 @@ async function deleteOrder(id) {
   }
 }
 
+
 // Project timeline view
 function openProjectView(orderId, order) {
   if (!projectView || !timelineSteps) {
@@ -170,6 +174,13 @@ function openProjectView(orderId, order) {
   const endDate = new Date(order.completion_date);
   const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
   const displayWeeks = Math.max(1, Math.ceil(totalDays / 7));
+
+  // Generate week labels
+  let weekLabels = '';
+  for (let i = 1; i <= displayWeeks; i++) {
+    weekLabels += `<div style="flex: 1; text-align: center;">Week${i}</div>`;
+  }
+  timelineWeekLabels.innerHTML = `<div style="display: grid; grid-template-columns: repeat(${displayWeeks}, 1fr); width: 100%; gap: 0;">${weekLabels}</div>`;
 
   const steps = [
     { name: "CNC Cutting", ratio: 0.2 },
@@ -216,16 +227,89 @@ function openProjectView(orderId, order) {
   // Get assignments for this specific order
   const orderAssignments = globalAssignments.filter(a => a.order === `O-${orderId}`);
   
+  // Function to determine if this order has priority (earliest completion_date)
+  const getOrderPriority = (currentOrder) => {
+    if (!globalOrders || globalOrders.length === 0) return true;
+    const currentDate = new Date(currentOrder.completion_date);
+    return globalOrders.every(o => new Date(o.completion_date) >= currentDate || o.id === currentOrder.id);
+  };
+  
+  // Check if this is the priority order
+  const isPriorityOrder = getOrderPriority(order);
+  
+  // Function to determine status based on machine availability
+  const getProcessStatus = (processName, progress, machineId, currentOrderId) => {
+    const stages = {
+      'CNC Cutting': { start: 0, end: 20 },
+      'CNC Edging': { start: 20, end: 40 },
+      'CNC Routing': { start: 40, end: 60 },
+      'Assembly': { start: 60, end: 90 },
+      'Packing': { start: 90, end: 100 }
+    };
+    
+    const stage = stages[processName];
+    if (!stage) return { status: 'Unknown', color: '#9CA3AF', textColor: '#fff' };
+    
+    if (progress >= stage.end) {
+      return { status: 'Completed', color: '#7B542F', textColor: '#fff' }; // Dark brown
+    } else if (progress >= stage.start && progress < stage.end) {
+      // This order is in this stage - check if machine is available
+      if (!machineId || machineId === 'N/A') {
+        // Manual station always available
+        return { status: 'Ongoing', color: '#FF9D00', textColor: '#fff' };
+      }
+      
+      // Check if a HIGHER PRIORITY order is currently in the same stage
+      const currentOrder = globalOrders.find(o => o.id === currentOrderId);
+      if (!currentOrder) {
+        return { status: 'Ongoing', color: '#FF9D00', textColor: '#fff' };
+      }
+      
+      let higherPriorityInSameStage = false;
+      
+      for (const otherOrder of (globalOrders || [])) {
+        if (otherOrder.id === currentOrderId) continue; // Skip self
+        
+        const otherProgress = otherOrder.progress || 0;
+        // If the other order is currently in the same stage
+        if (otherProgress >= stage.start && otherProgress < stage.end) {
+          // Check if other order has higher priority (earlier deadline)
+          const currentDeadline = new Date(currentOrder.completion_date);
+          const otherDeadline = new Date(otherOrder.completion_date);
+          
+          if (otherDeadline < currentDeadline) {
+            higherPriorityInSameStage = true;
+            break;
+          }
+        }
+      }
+      
+      if (higherPriorityInSameStage) {
+        return { status: 'Pending', color: '#FFCF71', textColor: '#7B542F' }; // Waiting for machine
+      } else {
+        return { status: 'Ongoing', color: '#FF9D00', textColor: '#fff' };
+      }
+    } else {
+      return { status: 'Pending', color: '#FFCF71', textColor: '#7B542F' }; // Light cream
+    }
+  };
+  
   // Build rows from assignments
   const assignmentRows = orderAssignments.length > 0 
-    ? orderAssignments.map(assignment => `
+    ? orderAssignments.map(assignment => {
+      const statusInfo = getProcessStatus(assignment.process, order.progress, assignment.machine, order.id);
+      return `
       <tr style="background: #FFFBF3;">
         <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${assignment.process}</td>
         <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${assignment.worker}</td>
-        <td class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFCF71;">1</td>
+        <td class="p-2 text-center" style="border: 1px solid #FFCF71;">
+          <span class="px-2 py-1 rounded text-xs font-semibold" style="background: ${statusInfo.color}; color: ${statusInfo.textColor};">
+            ${statusInfo.status}
+          </span>
+        </td>
         <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${assignment.machine !== 'N/A' ? assignment.machine : 'Manual Station'}</td>
       </tr>
-    `).join('')
+    `}).join('')
     : '<tr style="background: #FFFBF3;"><td colspan="4" class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFCF71;">No assignments available</td></tr>';
 
   const machineScheduleTable = `
@@ -234,7 +318,7 @@ function openProjectView(orderId, order) {
         <tr>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Process</th>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Assigned Worker</th>
-          <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Count</th>
+          <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Status</th>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Assigned Machine</th>
         </tr>
       </thead>
@@ -287,9 +371,9 @@ if (clearDemoDateBtn) {
 // Download PDF of the orders table
 if (downloadPdfBtn) {
   downloadPdfBtn.addEventListener("click", async () => {
-    const printableArea = document.querySelector(".print-full");
-    if (!printableArea) {
-      alert("Nothing to print.");
+    const projectView = document.getElementById("projectView");
+    if (!projectView || projectView.style.display === "none") {
+      alert("No project view open. Please click 'View Project' on an order first.");
       return;
     }
 
@@ -297,65 +381,26 @@ if (downloadPdfBtn) {
       downloadPdfBtn.disabled = true;
       downloadPdfBtn.textContent = "Preparing PDF...";
 
-      // Clone the printable area and enforce a stable layout for capture
-      const clone = printableArea.cloneNode(true);
+      // Clone the project view (everything except header buttons)
+      const clone = projectView.cloneNode(true);
       clone.style.background = "#ffffff";
-      clone.style.padding = "0";
+      clone.style.padding = "30px";
       clone.style.margin = "0";
       clone.style.boxSizing = "border-box";
-      // A4 landscape width at 96dpi for consistent capture size
-      clone.style.width = "1122px";
-      clone.style.maxWidth = "1122px";
+      clone.style.width = "1200px";
+      clone.style.maxWidth = "1200px";
+      clone.style.display = "block";
 
-      const table = clone.querySelector("table");
-      if (table) {
-        table.style.width = "100%";
-        table.style.tableLayout = "fixed";
-        table.style.borderCollapse = "collapse";
-
-        // Define column widths
-        const widths = [
-          "7%",  // Status
-          "7%",  // Priority
-          "11%", // Product
-          "11%", // Customer
-          "8%",  // Start
-          "8%",  // End
-          "5%",  // Days
-          "5%",  // Qty
-          "6%",  // Machines
-          "6%",  // Progress
-          "16%", // Timeline
-          "9%"   // Actions
-        ];
-
-        const rows = table.querySelectorAll("tr");
-        rows.forEach((row) => {
-          const cells = row.querySelectorAll("th, td");
-          cells.forEach((cell, index) => {
-            if (index < widths.length) {
-              cell.style.width = widths[index];
-            }
-            cell.style.padding = "6px";
-            cell.style.fontSize = "10px";
-            cell.style.whiteSpace = "nowrap";
-            cell.style.verticalAlign = "middle";
-            // Center the customer column (index 3)
-            if (index === 3) {
-              cell.style.textAlign = "center";
-            }
-          });
-        });
-
-        const actionButtons = table.querySelectorAll("button");
-        actionButtons.forEach((btn, index) => {
-          btn.style.padding = "4px 6px";
-          btn.style.fontSize = "10px";
-          btn.style.lineHeight = "1";
-          btn.style.display = "inline-block";
-          btn.style.marginRight = index % 2 === 0 ? "2px" : "0";
-        });
-
+      // Remove the button container from the clone
+      const buttonContainer = clone.querySelector(".flex.items-center.justify-between");
+      if (buttonContainer) {
+        const titleDiv = buttonContainer.querySelector("div:first-child");
+        if (titleDiv) {
+          buttonContainer.replaceWith(titleDiv);
+          titleDiv.style.marginBottom = "20px";
+          titleDiv.style.paddingBottom = "15px";
+          titleDiv.style.borderBottom = "2px solid #FFCF71";
+        }
       }
 
       // Offscreen render container
@@ -368,7 +413,7 @@ if (downloadPdfBtn) {
       container.appendChild(clone);
       document.body.appendChild(container);
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const captureWidth = clone.offsetWidth;
       const captureHeight = clone.offsetHeight;
@@ -391,17 +436,64 @@ if (downloadPdfBtn) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Fill the page width and align to top-left for a simple layout
-      const renderWidth = pageWidth;
+      // Calculate dimensions to fit on page
+      const renderWidth = pageWidth - 20;
       const renderHeight = (canvas.height * renderWidth) / canvas.width;
-      const x = 0;
-      const y = 0;
+      const x = 10;
+      const y = 10;
 
-      pdf.addImage(imgData, "PNG", x, y, renderWidth, renderHeight);
+      let yPos = y;
+      pdf.addImage(imgData, "PNG", x, yPos, renderWidth, renderHeight);
 
-      pdf.save("production-schedule.pdf");
+      // Add new page if content exceeds page height
+      if (renderHeight > pageHeight - 20) {
+        let remainingHeight = renderHeight;
+        let yOffset = 0;
+        let pageNum = 1;
+
+        while (remainingHeight > 0) {
+          const canvasHeight = Math.min(remainingHeight, pageHeight - 20);
+          const sourceY = (yOffset * canvas.height) / renderHeight;
+          const sourceHeight = (canvasHeight * canvas.height) / renderHeight;
+
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = sourceHeight;
+          const ctx = tempCanvas.getContext("2d");
+          ctx.drawImage(
+            canvas,
+            0,
+            sourceY,
+            canvas.width,
+            sourceHeight,
+            0,
+            0,
+            canvas.width,
+            sourceHeight
+          );
+
+          if (pageNum > 1) {
+            pdf.addPage();
+          }
+          pdf.addImage(
+            tempCanvas.toDataURL("image/png"),
+            "PNG",
+            x,
+            y,
+            renderWidth,
+            canvasHeight
+          );
+
+          yOffset += canvasHeight;
+          remainingHeight -= canvasHeight;
+          pageNum++;
+        }
+      }
+
+      pdf.save("gantt-chart.pdf");
     } catch (error) {
-      alert("Failed to generate PDF.");
+      console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       downloadPdfBtn.disabled = false;
       downloadPdfBtn.textContent = "Download PDF";

@@ -283,10 +283,10 @@ def create_order():
     
     try:
         qty = int(payload.get("quantity"))
-        if qty <= 0:
-            raise ValueError("Quantity must be > 0")
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid quantity"}), 400
+        if qty < 3 or qty > 50:
+            raise ValueError("Quantity must be between 3 and 50")
+    except (TypeError, ValueError) as e:
+        return jsonify({"error": str(e)}), 400
 
     # Create order with scheduled dates
     orders = load_orders()

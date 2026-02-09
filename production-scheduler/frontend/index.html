@@ -99,7 +99,7 @@
             </div>
             <div>
               <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
-              <p class="text-sm text-amber-100">Production Scheduler - Manage orders and track production progress</p>
+              <p class="text-sm text-amber-100">Production Scheduling & Resource Optimization System</p>
             </div>
           </div>
         </div>
@@ -180,7 +180,8 @@
               type="number"
               id="quantity"
               placeholder="Qty"
-              min="1"
+              min="3"
+              max="50"
               class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
               style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
@@ -211,15 +212,6 @@
               <h2 class="text-xl font-semibold" style="color: #7B542F;">Orders</h2>
               <p class="text-sm mt-1" style="color: #B6771D;">All production orders</p>
             </div>
-            <button
-              id="downloadPdfBtn"
-              class="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
-              style="background: #FF9D00;"
-              onmouseover="this.style.background='#B6771D'"
-              onmouseout="this.style.background='#FF9D00'"
-            >
-              Download PDF
-            </button>
           </div>
 
           <div class="overflow-x-auto">
@@ -264,15 +256,26 @@
                 Machine timeline for selected order
               </p>
             </div>
-            <button
-              id="closeProjectView"
-              class="px-4 py-2 rounded-lg transition font-medium text-white"
-              style="background: #7B542F;"
-              onmouseover="this.style.background='#B6771D'"
-              onmouseout="this.style.background='#7B542F'"
-            >
-              Close
-            </button>
+            <div class="flex gap-2">
+              <button
+                id="downloadPdfBtn"
+                class="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
+                style="background: #FF9D00;"
+                onmouseover="this.style.background='#B6771D'"
+                onmouseout="this.style.background='#FF9D00'"
+              >
+                Download PDF
+              </button>
+              <button
+                id="closeProjectView"
+                class="px-4 py-2 rounded-lg transition font-medium text-white"
+                style="background: #7B542F;"
+                onmouseover="this.style.background='#B6771D'"
+                onmouseout="this.style.background='#7B542F'"
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           <div class="mt-6">
@@ -293,6 +296,7 @@
             Machine Schedule Visualization
           </div>
         </section>
+
       </section>
     </main>
 
