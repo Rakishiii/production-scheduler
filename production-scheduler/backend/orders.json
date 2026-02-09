@@ -1,67 +1,15 @@
 [
   {
-    "id": 1,
-    "customer_name": "channel",
-    "cabinet_type": "Tall Cabinet",
-    "color": "red",
-    "quantity": 4,
-    "start_date": "2026-02-08",
-    "completion_date": "2026-02-14",
-    "status": "In Progress",
-    "progress": 0,
-    "is_priority": false,
-    "machines": 1
-  },
-  {
     "id": 2,
-    "customer_name": "rakishi",
-    "cabinet_type": "Shelves",
-    "color": "pink",
-    "quantity": 10,
-    "start_date": "2026-02-08",
-    "completion_date": "2026-02-10",
-    "status": "In Progress",
-    "progress": 0,
-    "is_priority": false,
-    "machines": 1
-  },
-  {
-    "id": 3,
-    "customer_name": "julia",
-    "cabinet_type": "Hanging Cabinet",
-    "color": "blue",
-    "quantity": 6,
-    "start_date": "2026-02-08",
-    "completion_date": "2026-02-09",
-    "status": "In Progress",
-    "progress": 0,
-    "is_priority": false,
-    "machines": 1
-  },
-  {
-    "id": 4,
-    "customer_name": "sheed",
-    "cabinet_type": "Hanging Cabinet",
-    "color": "red",
-    "quantity": 5,
-    "start_date": "2026-02-08",
-    "completion_date": "2026-02-28",
-    "status": "In Progress",
-    "progress": 0,
-    "is_priority": false,
-    "machines": 1
-  },
-  {
-    "id": 5,
-    "customer_name": "asdasd",
+    "customer_name": "raki",
     "cabinet_type": "Tall Cabinet",
-    "color": "asdasd",
-    "quantity": 1,
-    "start_date": "2026-02-08",
-    "completion_date": "2026-02-20",
+    "color": "AG-66",
+    "quantity": 7,
+    "start_date": "2026-02-09",
+    "completion_date": "2026-02-27",
     "status": "In Progress",
     "progress": 0,
-    "is_priority": false,
-    "machines": 1
+    "priority": "MEDIUM",
+    "machines": 3
   }
 ]

@@ -41,6 +41,123 @@ def calculate_daily_progress(days):
     return 100 / days
 
 
+def calculate_machine_schedule(orders):
+    """Calculate resource allocation (workers and machines) for each order."""
+    # Define available resources
+    machines = {
+        "M01": {"name": "M01 CNC Cutting", "process": "CNC Cutting", "available_until": datetime.now().date()},
+        "M02": {"name": "M02 CNC Edging", "process": "CNC Edging", "available_until": datetime.now().date()},
+        "M03": {"name": "M03 CNC Routing", "process": "CNC Routing", "available_until": datetime.now().date()}
+    }
+    
+    workers = {
+        "W01": {"name": "W01", "type": "CNC Operator", "available_until": datetime.now().date()},
+        "W02": {"name": "W02", "type": "CNC Operator", "available_until": datetime.now().date()},
+        "W03": {"name": "W03", "type": "CNC Operator", "available_until": datetime.now().date()},
+        "W04": {"name": "W04", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W05": {"name": "W05", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W06": {"name": "W06", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W07": {"name": "W07", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W08": {"name": "W08", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W09": {"name": "W09", "type": "Carpenter", "available_until": datetime.now().date()},
+        "W10": {"name": "W10", "type": "Helper", "available_until": datetime.now().date()},
+        "W11": {"name": "W11", "type": "Helper", "available_until": datetime.now().date()},
+        "W12": {"name": "W12", "type": "Helper", "available_until": datetime.now().date()},
+        "W13": {"name": "W13", "type": "Helper", "available_until": datetime.now().date()},
+        "W14": {"name": "W14", "type": "Helper", "available_until": datetime.now().date()},
+        "W15": {"name": "W15", "type": "Helper", "available_until": datetime.now().date()},
+        "W16": {"name": "W16", "type": "Helper", "available_until": datetime.now().date()},
+        "W17": {"name": "W17", "type": "Helper", "available_until": datetime.now().date()}
+    }
+    
+    # Process definitions with required worker types
+    processes = [
+        {"name": "CNC Cutting", "machine": "M01", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
+        {"name": "CNC Edging", "machine": "M02", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
+        {"name": "CNC Routing", "machine": "M03", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
+        {"name": "Assembly", "machine": None, "worker_type": "Carpenter", "hours_per_cabinet": 3},
+        {"name": "Packing", "machine": None, "worker_type": "Helper", "hours_per_cabinet": 1}
+    ]
+    
+    work_hours_per_day = 8
+    
+    # Sort orders by priority (HIGH first) and completion date
+    sorted_orders = sorted(orders, key=lambda x: (
+        {"HIGH": 0, "MEDIUM": 1, "LOW": 2}.get(x.get("priority", "LOW"), 2),
+        x.get("completion_date", "")
+    ))
+    
+    schedule = {}
+    assignments = []
+    
+    for order in sorted_orders:
+        order_id = order["id"]
+        order_name = f"O-{order_id}"
+        quantity = order.get("quantity", 1)
+        order_start = datetime.strptime(order["start_date"], "%Y-%m-%d").date()
+        
+        order_schedule = {}
+        
+        # Schedule through each process in sequence
+        for process in processes:
+            process_name = process["name"]
+            machine_id = process["machine"]
+            worker_type = process["worker_type"]
+            hours_needed = process["hours_per_cabinet"] * quantity
+            days_needed = max(1, int(hours_needed / work_hours_per_day))
+            
+            # Find first available worker of required type
+            available_worker = None
+            earliest_worker_date = None
+            for worker_id, worker in workers.items():
+                if worker["type"] == worker_type:
+                    if earliest_worker_date is None or worker["available_until"] < earliest_worker_date:
+                        earliest_worker_date = worker["available_until"]
+                        available_worker = worker_id
+            
+            # Determine start date based on worker and machine availability
+            if machine_id:
+                machine = machines[machine_id]
+                start_date = max(
+                    order_start,
+                    workers[available_worker]["available_until"],
+                    machine["available_until"]
+                )
+            else:
+                start_date = max(
+                    order_start,
+                    workers[available_worker]["available_until"]
+                )
+            
+            end_date = start_date + timedelta(days=days_needed)
+            
+            # Store schedule info
+            order_schedule[process_name] = {
+                "start": start_date.strftime("%Y-%m-%d"),
+                "end": end_date.strftime("%Y-%m-%d"),
+                "days": days_needed,
+                "worker": available_worker,
+                "machine": machine_id if machine_id else "N/A"
+            }
+            
+            # Add to assignments list for display
+            assignments.append({
+                "order": order_name,
+                "process": process_name,
+                "worker": available_worker,
+                "machine": machine_id if machine_id else "N/A"
+            })
+            
+            # Update resource availability
+            workers[available_worker]["available_until"] = end_date
+            if machine_id:
+                machines[machine_id]["available_until"] = end_date
+        
+        schedule[str(order_id)] = order_schedule
+    
+    return {"schedule": schedule, "assignments": assignments}
+
+
 def calculate_scheduled_dates(completion_date, quantity, orders):
     """Calculate realistic start date based on machine capacity."""
     # Production stages and hours per cabinet
@@ -129,15 +246,29 @@ def get_orders():
             daily_increment = calculate_daily_progress(total_days)
             order["progress"] = min(100, daily_increment * elapsed_days)
 
-        # Determine priority
+        # Determine priority (HIGH/MEDIUM/LOW)
         days_remaining = (end - today).days
-        order["is_priority"] = days_remaining <= 2
-        order["machines"] = 6 if order["is_priority"] else 1
+        if days_remaining <= 7:
+            order["priority"] = "HIGH"
+            order["machines"] = 6
+        elif days_remaining <= 21:
+            order["priority"] = "MEDIUM"
+            order["machines"] = 3
+        else:
+            order["priority"] = "LOW"
+            order["machines"] = 1
 
     # Sort by earliest due date first (EDD scheduling)
     orders.sort(key=lambda x: x["completion_date"])
     
-    return jsonify(orders)
+    # Calculate machine schedule with resource allocation
+    result = calculate_machine_schedule(orders)
+    
+    return jsonify({
+        "orders": orders,
+        "machine_schedule": result["schedule"],
+        "assignments": result["assignments"]
+    })
 
 
 @app.route("/orders", methods=["POST"])
@@ -159,12 +290,22 @@ def create_order():
 
     # Create order with scheduled dates
     orders = load_orders()
+    today = datetime.now().date()
     completion_date = payload["completion_date"]
     
-    # Calculate realistic start and end dates based on capacity
-    scheduled_start, scheduled_end = calculate_scheduled_dates(
-        completion_date, qty, orders
-    )
+    # Calculate priority based on completion date
+    end_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
+    days_remaining = (end_date - today).days
+    
+    if days_remaining <= 7:
+        priority = "HIGH"
+        machines = 6
+    elif days_remaining <= 21:
+        priority = "MEDIUM"
+        machines = 3
+    else:
+        priority = "LOW"
+        machines = 1
     
     order = {
         "id": len(orders) + 1,
@@ -172,12 +313,12 @@ def create_order():
         "cabinet_type": payload["cabinet_type"],
         "color": payload["color"],
         "quantity": qty,
-        "start_date": scheduled_start,
-        "completion_date": scheduled_end,
+        "start_date": today.strftime("%Y-%m-%d"),
+        "completion_date": completion_date,
         "status": "In Progress",
         "progress": 0,
-        "is_priority": False,
-        "machines": 1
+        "priority": priority,
+        "machines": machines
     }
 
     orders.append(order)

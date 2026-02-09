@@ -7,20 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       .gantt-bar {
-        height: 24px;
-        background: linear-gradient(90deg, #10b981, #059669);
-        border-radius: 4px;
+        height: 28px;
+        background: linear-gradient(90deg, #B6771D, #7B542F);
+        border-radius: 6px;
         position: relative;
         overflow: hidden;
       }
       .gantt-bar.priority {
-        background: linear-gradient(90deg, #ef4444, #dc2626);
+        background: linear-gradient(90deg, #FF9D00, #B6771D);
       }
       .gantt-bar-text {
-        font-size: 11px;
+        font-size: 12px;
         color: white;
-        padding: 4px;
-        font-weight: bold;
+        padding: 4px 8px;
+        font-weight: 600;
       }
       .gantt-container {
         display: flex;
@@ -35,6 +35,30 @@
         );
         background-size: calc(100% / var(--weeks)) 100%;
       }
+      table th:nth-child(4),
+      table td:nth-child(4) {
+        text-align: center;
+      }
+      #color option {
+        padding: 8px 12px;
+        font-weight: 500;
+      }
+      #color option[value="AG-62"] { background-color: #473220; color: white; }
+      #color option[value="AG-63"] { background-color: #c5ac80; color: black; }
+      #color option[value="AG-65"] { background-color: #bbcbb7; color: black; }
+      #color option[value="AG-66"] { background-color: #afb0ab; color: black; }
+      #color option[value="AG-67"] { background-color: #d8cd9c; color: black; }
+      #color option[value="AG-68"] { background-color: #c9c5bb; color: black; }
+      #color option[value="AG-69"] { background-color: #dacdb4; color: black; }
+      #color option[value="AG-70"] { background-color: #d1d8da; color: black; }
+      #color option[value="AG-71"] { background-color: #9ba2a4; color: black; }
+      #color option[value="AG-73"] { background-color: #92856d; color: black; }
+      #color option[value="AG-75"] { background-color: #755e8b; color: white; }
+      #color option[value="AG-76"] { background-color: #5b4032; color: white; }
+      #color option[value="AG-77"] { background-color: #9c8064; color: black; }
+      #color option[value="AG-78"] { background-color: #bfc1b5; color: black; }
+      #color option[value="AG-79"] { background-color: #3f4452; color: white; }
+      #color option[value="AG-80"] { background-color: #d3ebf3; color: black; }
       @media print {
         body {
           background: white;
@@ -45,9 +69,6 @@
         }
         main {
           display: block !important;
-        }
-        aside {
-          display: none !important;
         }
         section {
           padding: 0 !important;
@@ -67,92 +88,116 @@
       }
     </style>
   </head>
-  <body class="min-h-screen bg-slate-100 text-slate-900">
-    <main class="min-h-screen grid grid-cols-1 lg:grid-cols-[260px_1fr]">
-      <aside class="bg-slate-900 text-white p-6">
-        <div class="flex items-center gap-3 mb-8">
-          <div class="h-10 w-10 rounded-lg bg-red-500 flex items-center justify-center">
-            <span class="font-bold">PS</span>
-          </div>
-          <div>
-            <p class="text-lg font-semibold">Production Scheduler</p>
-            <p class="text-xs text-slate-300">Dashboard</p>
+  <body class="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 text-slate-900">
+    <main class="min-h-screen">
+      <!-- Header -->
+      <header class="shadow-sm sticky top-0 z-40" style="background: linear-gradient(135deg, #7B542F 0%, #B6771D 100%); border-bottom: 2px solid #FF9D00;">
+        <div class="max-w-7xl mx-auto px-6 py-6">
+          <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-lg flex items-center justify-center" style="background: #FF9D00; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+              <span class="text-white font-bold text-lg">BA</span>
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
+              <p class="text-sm text-amber-100">Production Scheduler - Manage orders and track production progress</p>
+            </div>
           </div>
         </div>
-        <nav class="space-y-2 text-sm">
-          <button class="w-full text-left px-3 py-2 rounded-lg bg-slate-800">Dashboard</button>
-          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Orders</button>
-          <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800">Analytics</button>
-        </nav>
-      </aside>
+      </header>
 
-      <section class="p-6 lg:p-10">
-        <header class="mb-8">
-          <h1 class="text-3xl font-bold">Production Scheduling</h1>
-          <p class="text-sm text-slate-600">Manage orders and track production progress</p>
-        </header>
-
+      <section class="max-w-7xl mx-auto px-6 py-10">
         <!-- New Order Form -->
-        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-8 no-print">
-          <h2 class="text-lg font-semibold mb-4">Add New Order</h2>
-          <div class="flex flex-wrap items-center gap-3 mb-4">
-            <label class="text-sm text-slate-600">
-              Demo date (optional):
+        <div class="bg-white rounded-2xl p-8 shadow-lg mb-8 no-print" style="border: 2px solid #FFCF71;">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-xl font-semibold" style="color: #7B542F;">Add New Order</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">Create a new production order</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium" style="color: #7B542F;">Demo date:</label>
               <input
                 type="date"
                 id="demoDate"
-                class="ml-2 rounded-lg border border-slate-300 p-2 text-sm"
+                class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               />
-            </label>
-            <button
-              id="clearDemoDate"
-              class="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300"
-            >
-              Use Today
-            </button>
+              <button
+                id="clearDemoDate"
+                class="px-4 py-2 rounded-lg text-white text-sm font-medium transition"
+                style="background: #B6771D;"
+                onmouseover="this.style.background='#7B542F'"
+                onmouseout="this.style.background='#B6771D'"
+              >
+                Today
+              </button>
+            </div>
           </div>
-          <form id="orderForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <form id="orderForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
             <input
               type="text"
               id="customerName"
               placeholder="Customer Name"
-              class="rounded-lg border border-slate-300 p-2 text-sm"
+              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
             />
             <select
               id="cabinetType"
-              class="rounded-lg border border-slate-300 p-2 text-sm"
+              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
             >
-              <option value="">Select Cabinet Type</option>
+              <option value="">Cabinet Type</option>
               <option value="Tall Cabinet">Tall Cabinet</option>
               <option value="Hanging Cabinet">Hanging Cabinet</option>
               <option value="Shelves">Shelves</option>
             </select>
-            <input
-              type="text"
+            <select
               id="color"
-              placeholder="Color"
-              class="rounded-lg border border-slate-300 p-2 text-sm"
+              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
-            />
+            >
+              <option value="">Color</option>
+              <option value="AG-62">AG-62 (#473220)</option>
+              <option value="AG-63">AG-63 (#c5ac80)</option>
+              <option value="AG-65">AG-65 (#bbcbb7)</option>
+              <option value="AG-66">AG-66 (#afb0ab)</option>
+              <option value="AG-67">AG-67 (#d8cd9c)</option>
+              <option value="AG-68">AG-68 (#c9c5bb)</option>
+              <option value="AG-69">AG-69 (#dacdb4)</option>
+              <option value="AG-70">AG-70 (#d1d8da)</option>
+              <option value="AG-71">AG-71 (#9ba2a4)</option>
+              <option value="AG-73">AG-73 (#92856d)</option>
+              <option value="AG-75">AG-75 (#755e8b)</option>
+              <option value="AG-76">AG-76 (#5b4032)</option>
+              <option value="AG-77">AG-77 (#9c8064)</option>
+              <option value="AG-78">AG-78 (#bfc1b5)</option>
+              <option value="AG-79">AG-79 (#3f4452)</option>
+              <option value="AG-80">AG-80 (#d3ebf3)</option>
+            </select>
             <input
               type="number"
               id="quantity"
-              placeholder="Quantity"
+              placeholder="Qty"
               min="1"
-              class="rounded-lg border border-slate-300 p-2 text-sm"
+              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
             />
             <input
               type="date"
               id="completionDate"
-              class="rounded-lg border border-slate-300 p-2 text-sm"
+              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
             />
             <button
               type="submit"
-              class="col-span-1 md:col-span-2 lg:col-span-1 rounded-lg bg-blue-600 text-white py-2 font-semibold hover:bg-blue-700"
+              class="rounded-lg text-white px-6 py-3 font-semibold transition shadow-lg whitespace-nowrap"
+              style="background: #FF9D00;"
+              onmouseover="this.style.background='#B6771D'"
+              onmouseout="this.style.background='#FF9D00'"
             >
               Add Order
             </button>
@@ -160,58 +205,71 @@
         </div>
 
         <!-- Orders Table with Gantt -->
-        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto print-full">
-          <div class="flex justify-between items-center mb-4 no-print">
-            <h2 class="text-lg font-semibold">Orders</h2>
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden print-full" style="border: 2px solid #FFCF71;">
+          <div class="flex justify-between items-center p-8 no-print" style="border-bottom: 2px solid #FFCF71;">
+            <div>
+              <h2 class="text-xl font-semibold" style="color: #7B542F;">Orders</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">All production orders</p>
+            </div>
             <button
               id="downloadPdfBtn"
-              class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300"
+              class="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
+              style="background: #FF9D00;"
+              onmouseover="this.style.background='#B6771D'"
+              onmouseout="this.style.background='#FF9D00'"
             >
               Download PDF
             </button>
           </div>
 
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="border-b-2 border-slate-300 bg-slate-50">
-                <th class="text-left p-2">Status</th>
-                <th class="text-left p-2">Priority</th>
-                <th class="text-left p-2">Product Name</th>
-                <th class="text-left p-2">Customer</th>
-                <th class="text-left p-2">Start Date</th>
-                <th class="text-left p-2">End Date</th>
-                <th class="text-left p-2"># Days</th>
-                <th class="text-left p-2">Qty</th>
-                <th class="text-left p-2">Machines</th>
-                <th class="text-left p-2">% Complete</th>
-                <th class="text-left p-2">Progress</th>
-                <th class="text-left p-2 no-print">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTable">
-              <tr>
-                <td colspan="12" class="p-4 text-center text-slate-500">
-                  Loading orders...
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Status</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Priority</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Product</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Customer</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Start</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">End</th>
+                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Days</th>
+                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Qty</th>
+                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Color</th>
+                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Progress</th>
+                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Timeline</th>
+                  <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable" class="divide-y divide-slate-200">
+                <tr>
+                  <td colspan="12" class="p-8 text-center text-slate-500">
+                    Loading orders...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        <!-- Machine Schedule -->
         <section
           id="projectView"
-          class="mt-10 bg-white border border-slate-200 rounded-xl p-6 shadow-sm hidden"
+          class="mt-10 bg-white rounded-2xl p-8 shadow-lg hidden"
+          style="border: 2px solid #FFCF71;"
         >
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center justify-between gap-3 mb-8 pb-6" style="border-bottom: 2px solid #FFCF71;">
             <div>
-              <h3 class="text-lg font-semibold">Production Timeline</h3>
-              <p class="text-sm text-slate-600" id="projectSubtitle">
-                Project view for selected order
+              <h3 class="text-xl font-semibold" style="color: #7B542F;">Machine Schedule</h3>
+              <p class="text-sm mt-1" id="projectSubtitle" style="color: #B6771D;">
+                Machine timeline for selected order
               </p>
             </div>
             <button
               id="closeProjectView"
-              class="text-sm text-slate-500 hover:text-slate-700"
+              class="px-4 py-2 rounded-lg transition font-medium text-white"
+              style="background: #7B542F;"
+              onmouseover="this.style.background='#B6771D'"
+              onmouseout="this.style.background='#7B542F'"
             >
               Close
             </button>
@@ -220,18 +278,19 @@
           <div class="mt-6">
             <div
               id="timelineWeeks"
-              class="grid grid-cols-[12rem_1fr] items-center text-[11px] text-slate-500 mb-3"
+              class="grid grid-cols-[12rem_1fr] items-center text-[12px] mb-4"
+              style="color: #B6771D;"
             >
               <div></div>
               <div id="timelineWeekLabels" class="grid w-full font-semibold"></div>
             </div>
-            <div class="space-y-3" id="timelineSteps">
+            <div class="space-y-4" id="timelineSteps">
               <!-- Steps injected by script.js -->
             </div>
           </div>
 
-          <div class="mt-6 text-center text-sm text-slate-500">
-            Production Timeline
+          <div class="mt-8 pt-6 border-t border-slate-200 text-center text-sm text-slate-500">
+            Machine Schedule Visualization
           </div>
         </section>
       </section>
@@ -239,6 +298,39 @@
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script>
+      // Color select visual feedback
+      const colorSelect = document.getElementById('color');
+      const colorMap = {
+        'AG-62': { bg: '#473220', text: '#ffffff' },
+        'AG-63': { bg: '#c5ac80', text: '#000000' },
+        'AG-65': { bg: '#bbcbb7', text: '#000000' },
+        'AG-66': { bg: '#afb0ab', text: '#000000' },
+        'AG-67': { bg: '#d8cd9c', text: '#000000' },
+        'AG-68': { bg: '#c9c5bb', text: '#000000' },
+        'AG-69': { bg: '#dacdb4', text: '#000000' },
+        'AG-70': { bg: '#d1d8da', text: '#000000' },
+        'AG-71': { bg: '#9ba2a4', text: '#000000' },
+        'AG-73': { bg: '#92856d', text: '#000000' },
+        'AG-75': { bg: '#755e8b', text: '#ffffff' },
+        'AG-76': { bg: '#5b4032', text: '#ffffff' },
+        'AG-77': { bg: '#9c8064', text: '#000000' },
+        'AG-78': { bg: '#bfc1b5', text: '#000000' },
+        'AG-79': { bg: '#3f4452', text: '#ffffff' },
+        'AG-80': { bg: '#d3ebf3', text: '#000000' }
+      };
+      
+      colorSelect.addEventListener('change', function() {
+        const color = colorMap[this.value];
+        if (color) {
+          this.style.backgroundColor = color.bg;
+          this.style.color = color.text;
+        } else {
+          this.style.backgroundColor = '';
+          this.style.color = '';
+        }
+      });
+    </script>
     <script src="script.js"></script>
   </body>
 </html>
