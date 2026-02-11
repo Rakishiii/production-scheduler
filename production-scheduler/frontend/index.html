@@ -59,6 +59,24 @@
       #color option[value="AG-78"] { background-color: #bfc1b5; color: black; }
       #color option[value="AG-79"] { background-color: #3f4452; color: white; }
       #color option[value="AG-80"] { background-color: #d3ebf3; color: black; }
+      .nav-tab {
+        background: transparent;
+        border: none;
+        color: #FFFBF3;
+        font-size: 17px;
+        font-weight: 600;
+        padding: 6px 0;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+      }
+      .nav-tab:hover {
+        color: #ffffff;
+        border-bottom-color: #FFCF71;
+      }
+      .nav-tab.active {
+        color: #ffffff;
+        border-bottom-color: #FF9D00;
+      }
       @media print {
         body {
           background: white;
@@ -93,19 +111,38 @@
       <!-- Header -->
       <header class="shadow-sm sticky top-0 z-40" style="background: linear-gradient(135deg, #7B542F 0%, #B6771D 100%); border-bottom: 2px solid #FF9D00;">
         <div class="max-w-7xl mx-auto px-6 py-6">
-          <div class="flex items-center gap-3">
-            <div class="h-12 w-12 rounded-lg flex items-center justify-center" style="background: #FF9D00; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-              <span class="text-white font-bold text-lg">BA</span>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <img src="image-removebg-preview (1).png" alt="BA Cabinet Concepts Logo" class="h-16 w-auto">
+              <div>
+                <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
+                <p class="text-sm text-amber-100">Production Scheduling & Resource Optimization System</p>
+              </div>
             </div>
-            <div>
-              <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
-              <p class="text-sm text-amber-100">Production Scheduling & Resource Optimization System</p>
+            <div class="flex flex-wrap gap-6 no-print" role="tablist" aria-label="Primary navigation">
+              <button
+                id="navOrders"
+                type="button"
+                class="nav-tab active"
+                aria-selected="true"
+              >
+                Orders
+              </button>
+              <button
+                id="navDecision"
+                type="button"
+                class="nav-tab"
+                aria-selected="false"
+              >
+                Decision Variables
+              </button>
             </div>
           </div>
         </div>
       </header>
 
       <section class="max-w-7xl mx-auto px-6 py-10">
+        <div id="ordersPage">
         <!-- New Order Form -->
         <div class="bg-white rounded-2xl p-8 shadow-lg mb-8 no-print" style="border: 2px solid #FFCF71;">
           <div class="flex items-center justify-between mb-6">
@@ -296,6 +333,78 @@
             Machine Schedule Visualization
           </div>
         </section>
+        </div>
+
+        <div id="decisionPage" class="hidden">
+          <div class="bg-white rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71;">
+            <div class="mb-6">
+              <h2 class="text-xl font-semibold" style="color: #7B542F;">Decision Variables</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">Model definition and constraints</p>
+            </div>
+
+            <div class="space-y-6 text-sm" style="color: #4b5563;">
+              <div>
+                <h3 class="text-base font-semibold" style="color: #7B542F;">3.3 Indices</h3>
+                <p class="mt-2">Let: i = 1,2,3,...,N (customer orders/jobs)</p>
+                <p>Each order already includes: Cabinet type, Dimensions, Quantity, Custom features</p>
+                <p>m = 1,2,3,4 (machines/workstations)</p>
+                <div class="mt-2">
+                  <p class="font-semibold" style="color: #7B542F;">Machine / Workstation</p>
+                  <p>1 CNC Cutting (man-operated)</p>
+                  <p>2 CNC Edging (man-operated)</p>
+                  <p>3 CNC Routing (man-operated)</p>
+                  <p>4 Assembly-Finishing-Packing (manual station)</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-base font-semibold" style="color: #7B542F;">3.4 Decision Variables and Parameters</h3>
+                <p class="mt-2">Decision Variables: S_i = Start time of order i</p>
+                <p>C_i = Completion time of order i</p>
+                <p>C_max = Makespan (maximum completion time)</p>
+                <p class="mt-2">Parameters: p_{im} = Processing time of order i on machine m</p>
+                <p>H_m = Available working time of machine m</p>
+              </div>
+
+              <div>
+                <h3 class="text-base font-semibold" style="color: #7B542F;">3.5 Objective Function</h3>
+                <p class="mt-2">Minimize C_max</p>
+                <p>C_max ≥ C_i for all i ∈ {1,...,N}</p>
+                <p class="mt-2">The model minimizes the maximum completion time among all customer orders to achieve the shortest overall production schedule.</p>
+              </div>
+
+              <div>
+                <h3 class="text-base font-semibold" style="color: #7B542F;">3.6 Model Constraints</h3>
+                <div class="mt-2">
+                  <p class="font-semibold" style="color: #7B542F;">3.6.1 Machine Capacity Constraints</p>
+                  <p>∑_{i=1}^{N} p_{i1} ≤ H_1</p>
+                  <p>∑_{i=1}^{N} p_{i2} ≤ H_2</p>
+                  <p>∑_{i=1}^{N} p_{i3} ≤ H_3</p>
+                  <p>∑_{i=1}^{N} p_{i4} ≤ H_4</p>
+                </div>
+                <div class="mt-4">
+                  <p class="font-semibold" style="color: #7B542F;">3.6.2 Operation Sequence Constraints</p>
+                  <p>CNC Cutting → Edging → Routing → Assembly-Packing</p>
+                  <p>S_{i2} ≥ S_{i1} + p_{i1}</p>
+                  <p>S_{i3} ≥ S_{i2} + p_{i2}</p>
+                  <p>S_{i4} ≥ S_{i3} + p_{i3}</p>
+                </div>
+                <div class="mt-4">
+                  <p class="font-semibold" style="color: #7B542F;">3.6.3 Completion Time Definition</p>
+                  <p>C_i = S_{i4} + p_{i4}</p>
+                </div>
+                <div class="mt-4">
+                  <p class="font-semibold" style="color: #7B542F;">3.6.4 Makespan Constraint</p>
+                  <p>C_max ≥ C_i for all i ∈ {1,...,N}</p>
+                </div>
+                <div class="mt-4">
+                  <p class="font-semibold" style="color: #7B542F;">3.6.5 Non-Negativity Constraints</p>
+                  <p>S_i ≥ 0, C_i ≥ 0, p_{im} ≥ 0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
       </section>
     </main>
@@ -334,6 +443,24 @@
           this.style.color = '';
         }
       });
+
+      const navOrders = document.getElementById('navOrders');
+      const navDecision = document.getElementById('navDecision');
+      const ordersPage = document.getElementById('ordersPage');
+      const decisionPage = document.getElementById('decisionPage');
+
+      const setActivePage = (active) => {
+        const isOrders = active === 'orders';
+        ordersPage.classList.toggle('hidden', !isOrders);
+        decisionPage.classList.toggle('hidden', isOrders);
+        navOrders.classList.toggle('active', isOrders);
+        navDecision.classList.toggle('active', !isOrders);
+        navOrders.setAttribute('aria-selected', isOrders);
+        navDecision.setAttribute('aria-selected', !isOrders);
+      };
+
+      navOrders.addEventListener('click', () => setActivePage('orders'));
+      navDecision.addEventListener('click', () => setActivePage('decision'));
     </script>
     <script src="script.js"></script>
   </body>

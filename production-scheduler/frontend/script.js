@@ -1,5 +1,6 @@
 // Production Scheduler Frontend
-const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+//const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+const BACKEND_URL = "http://127.0.0.1:5000";
 
 // Store machine schedule data globally
 let globalMachineSchedule = {};
@@ -97,6 +98,8 @@ async function loadOrders() {
                 onclick='openProjectView(${order.id}, ${JSON.stringify(order)})'
                 class="px-2 py-1 rounded-lg text-white text-xs font-semibold mr-2"
                 style="background: #FF9D00;"
+                onmouseover="this.style.background='#B6771D'"
+                onmouseout="this.style.background='#FF9D00'"
               >
                 View Project
               </button>
@@ -104,6 +107,8 @@ async function loadOrders() {
                 onclick='deleteOrder(${order.id})'
                 class="px-2 py-1 rounded-lg text-white text-xs font-semibold"
                 style="background: #7B542F;"
+                onmouseover="this.style.background='#B6771D'"
+                onmouseout="this.style.background='#7B542F'"
               >
                 Delete
               </button>

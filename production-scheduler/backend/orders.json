@@ -24,5 +24,44 @@
     "progress": 0,
     "priority": "MEDIUM",
     "machines": 3
+  },
+  {
+    "id": 3,
+    "customer_name": "asdad",
+    "cabinet_type": "Tall Cabinet",
+    "color": "AG-65",
+    "quantity": 44,
+    "start_date": "2026-02-10",
+    "completion_date": "2026-02-27",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "MEDIUM",
+    "machines": 3
+  },
+  {
+    "id": 4,
+    "customer_name": "asdasd",
+    "cabinet_type": "Hanging Cabinet",
+    "color": "AG-63",
+    "quantity": 12,
+    "start_date": "2026-02-10",
+    "completion_date": "2026-02-13",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "HIGH",
+    "machines": 6
+  },
+  {
+    "id": 5,
+    "customer_name": "Channel",
+    "cabinet_type": "Hanging Cabinet",
+    "color": "AG-67",
+    "quantity": 12,
+    "start_date": "2026-02-10",
+    "completion_date": "2026-02-26",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "MEDIUM",
+    "machines": 3
   }
 ]
