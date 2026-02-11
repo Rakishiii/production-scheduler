@@ -59,6 +59,19 @@
       #color option[value="AG-78"] { background-color: #bfc1b5; color: black; }
       #color option[value="AG-79"] { background-color: #3f4452; color: white; }
       #color option[value="AG-80"] { background-color: #d3ebf3; color: black; }
+      select option:disabled {
+        display: none;
+      }
+      select option {
+        background-color: white;
+        color: #1e293b;
+        padding: 8px 12px;
+      }
+      select option:checked {
+        background: linear-gradient(#FF9D00, #FF9D00);
+        background-color: #FF9D00 !important;
+        color: white !important;
+      }
       .nav-tab {
         background: transparent;
         border: none;
@@ -184,7 +197,7 @@
               style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
               required
             >
-              <option value="">Cabinet Type</option>
+              <option value="" disabled selected>Cabinet Type</option>
               <option value="Tall Cabinet">Tall Cabinet</option>
               <option value="Hanging Cabinet">Hanging Cabinet</option>
               <option value="Shelves">Shelves</option>
