@@ -81,6 +81,7 @@
         padding: 6px 0;
         border-bottom: 2px solid transparent;
         cursor: pointer;
+        white-space: nowrap;
       }
       .nav-tab:hover {
         color: #ffffff;
@@ -89,6 +90,232 @@
       .nav-tab.active {
         color: #ffffff;
         border-bottom-color: #FF9D00;
+      }
+      .stat-card {
+        border: 2px solid #FFCF71;
+        border-radius: 1rem;
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(123, 84, 47, 0.08);
+      }
+      .stat-label {
+        color: #B6771D;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .stat-value {
+        color: #3f2a1c;
+        font-weight: 700;
+        font-size: 1.85rem;
+        line-height: 1.2;
+      }
+      .mix-list {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .mix-circle-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .mix-ring {
+        --value: 0;
+        width: 120px;
+        height: 120px;
+        border-radius: 9999px;
+        background: conic-gradient(#FF9D00 calc(var(--value) * 1%), #343543 0);
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+      .mix-ring::before {
+        content: "";
+        position: absolute;
+        width: 88px;
+        height: 88px;
+        border-radius: 9999px;
+        background: #FFFBF3;
+      }
+      .mix-ring span {
+        position: relative;
+        z-index: 1;
+        color: #3f2a1c;
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .mix-circle-label {
+        color: #3f2a1c;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+      }
+      .mix-circle-count {
+        color: #B6771D;
+        font-size: 0.8rem;
+        text-align: center;
+      }
+      .deadline-list {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-evenly;
+        gap: 0.5rem;
+        flex: 1;
+      }
+      .deadline-item {
+        border: 1px solid #FFCF71;
+        background: #FFFBF3;
+        border-radius: 0.85rem;
+        padding: 0.85rem;
+      }
+      .deadline-name {
+        color: #3f2a1c;
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+      .deadline-meta {
+        color: #B6771D;
+        font-size: 0.85rem;
+      }
+      .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+      .pagination-btn {
+        border: 1px solid #FFCF71;
+        background: #FFFBF3;
+        color: #7B542F;
+        padding: 0.35rem 0.9rem;
+        border-radius: 0.6rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .pagination-btn:hover:not(:disabled) {
+        background: #FFE8B8;
+        border-color: #FF9D00;
+      }
+      .pagination-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .pagination-info {
+        color: #7B542F;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .util-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.65rem;
+      }
+      .util-ring {
+        --value: 0;
+        width: 120px;
+        height: 120px;
+        border-radius: 9999px;
+        background: conic-gradient(#FF9D00 calc(var(--value) * 1%), #343543 0);
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+      .util-ring::before {
+        content: "";
+        position: absolute;
+        width: 88px;
+        height: 88px;
+        border-radius: 9999px;
+        background: #FFFBF3;
+      }
+      .util-ring span {
+        position: relative;
+        z-index: 1;
+        color: #3f2a1c;
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .util-label {
+        color: #7B542F;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-align: center;
+      }
+      .spec-sheet-grid {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 1.4rem;
+      }
+      .spec-sheet-card {
+        border: 1px solid #E7C777;
+        border-radius: 0.95rem;
+        background: #F9F6EF;
+        padding: 0.8rem 0.9rem 0.75rem;
+      }
+      .spec-sheet-title {
+        text-align: left;
+        font-size: 1.12rem;
+        font-weight: 700;
+        color: #7B542F;
+        padding: 0.2rem 0.05rem 0.55rem;
+      }
+      .spec-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+        background: #ffffff;
+      }
+      .spec-table th,
+      .spec-table td {
+        border: 1px solid #E7C777;
+        padding: 0.38rem 0.45rem;
+        color: #3f2a1c;
+      }
+      .spec-table th {
+        background: #F2DFB3;
+        color: #7B542F;
+        font-weight: 700;
+      }
+      .spec-note {
+        margin-top: 0.55rem;
+        font-size: 0.8rem;
+        line-height: 1.35;
+        color: #64452D;
+      }
+      .swatch-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2rem;
+      }
+      .swatch-list {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.65rem;
+      }
+      .swatch-item {
+        border-radius: 0.6rem;
+        border: 1px solid #E7C777;
+        box-shadow: 0 6px 16px rgba(123, 84, 47, 0.08);
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 700;
+        padding: 1.25rem 0.45rem;
+      }
+      @media (min-width: 1024px) {
+        .spec-sheet-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 1023px) {
+        .swatch-grid {
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
       }
       @media print {
         body {
@@ -119,27 +346,42 @@
       }
     </style>
   </head>
-  <body class="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 text-slate-900">
+  <body class="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50" style="color: #3f2a1c;">
     <main class="min-h-screen">
-      <!-- Header -->
       <header class="shadow-sm sticky top-0 z-40" style="background: linear-gradient(135deg, #7B542F 0%, #B6771D 100%); border-bottom: 2px solid #FF9D00;">
         <div class="max-w-7xl mx-auto px-6 py-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-              <img src="image-removebg-preview (1).png" alt="BA Cabinet Concepts Logo" class="h-16 w-auto">
+              <img src="image-removebg-preview (1).png" alt="BA Cabinet Concepts Logo" class="h-16 w-auto" />
               <div>
                 <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
-                <p class="text-sm text-amber-100">Production Scheduling & Resource Optimization System</p>
+                <p class="text-sm text-amber-100">Production Scheduling &amp; Resource Optimization System</p>
               </div>
             </div>
-            <div class="flex flex-wrap gap-6 no-print" role="tablist" aria-label="Primary navigation">
+            <div class="flex gap-5 no-print overflow-x-auto" role="tablist" aria-label="Primary navigation">
               <button
-                id="navOrders"
+                id="navDashboard"
                 type="button"
                 class="nav-tab active"
                 aria-selected="true"
               >
+                Dashboard
+              </button>
+              <button
+                id="navOrders"
+                type="button"
+                class="nav-tab"
+                aria-selected="false"
+              >
                 Orders
+              </button>
+              <button
+                id="navCabinet"
+                type="button"
+                class="nav-tab"
+                aria-selected="false"
+              >
+                Cabinet Specifications
               </button>
               <button
                 id="navDecision"
@@ -147,7 +389,7 @@
                 class="nav-tab"
                 aria-selected="false"
               >
-                Decision Variables
+                Optimization Model
               </button>
             </div>
           </div>
@@ -155,207 +397,394 @@
       </header>
 
       <section class="max-w-7xl mx-auto px-6 py-10">
-        <div id="ordersPage">
-        <!-- New Order Form -->
-        <div class="bg-white rounded-2xl p-8 shadow-lg mb-8 no-print" style="border: 2px solid #FFCF71;">
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-xl font-semibold" style="color: #7B542F;">Add New Order</h2>
-              <p class="text-sm mt-1" style="color: #B6771D;">Create a new production order</p>
+        <div id="dashboardPage">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div class="stat-card p-6">
+              <p class="stat-label">Total Orders</p>
+              <p id="statTotalOrders" class="stat-value mt-2">0</p>
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-sm font-medium" style="color: #7B542F;">Demo date:</label>
+            <div class="stat-card p-6">
+              <p class="stat-label">Active Orders</p>
+              <p id="statActiveOrders" class="stat-value mt-2">0</p>
+            </div>
+            <div class="stat-card p-6">
+              <p class="stat-label">Completed Orders</p>
+              <p id="statCompletedOrders" class="stat-value mt-2">0</p>
+            </div>
+            <div class="stat-card p-6">
+              <p class="stat-label">Due In 7 Days</p>
+              <p id="statDueSoon" class="stat-value mt-2">0</p>
+            </div>
+            <div class="stat-card p-6">
+              <p class="stat-label">Total Units</p>
+              <p id="statTotalUnits" class="stat-value mt-2">0</p>
+            </div>
+            <div class="stat-card p-6">
+              <p class="stat-label">Pending Units</p>
+              <p id="statPendingUnits" class="stat-value mt-2">0</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+            <div class="bg-white rounded-2xl p-6 shadow-lg" style="border: 2px solid #FFCF71;">
+              <h3 class="text-base font-semibold" style="color: #3f2a1c;">Priority Mix</h3>
+              <p class="text-xs mt-1 mb-5" style="color: #B6771D;">Order distribution by urgency</p>
+              <div id="priorityBreakdown" class="mix-list">
+                <p class="text-sm" style="color: #B6771D;">No data yet.</p>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 shadow-lg" style="border: 2px solid #FFCF71;">
+              <h3 class="text-base font-semibold" style="color: #3f2a1c;">Cabinet Type Mix</h3>
+              <p class="text-xs mt-1 mb-5" style="color: #B6771D;">Current workload by product type</p>
+              <div id="cabinetBreakdown" class="mix-list">
+                <p class="text-sm" style="color: #B6771D;">No data yet.</p>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 shadow-lg flex flex-col" style="border: 2px solid #FFCF71;">
+              <h3 class="text-base font-semibold" style="color: #3f2a1c;">Upcoming Deadlines</h3>
+              <p class="text-xs mt-1 mb-5" style="color: #B6771D;">Next orders to complete</p>
+              <div id="upcomingDeadlines" class="deadline-list">
+                <p class="text-sm" style="color: #B6771D;">No orders yet.</p>
+              </div>
+              <div class="pagination-controls mt-4">
+                <button id="deadlinesPrevBtn" type="button" class="pagination-btn">Prev</button>
+                <span id="deadlinesPageInfo" class="pagination-info">Page 1 of 1</span>
+                <button id="deadlinesNextBtn" type="button" class="pagination-btn">Next</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ordersPage" class="hidden">
+          <div class="bg-white rounded-2xl p-8 shadow-lg mb-8 no-print" style="border: 2px solid #FFCF71;">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-xl font-semibold" style="color: #7B542F;">Add New Order</h2>
+                <p class="text-sm mt-1" style="color: #B6771D;">Create a new production order</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-sm font-medium" style="color: #7B542F;">Demo date:</label>
+                <input
+                  type="date"
+                  id="demoDate"
+                  class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                />
+                <button
+                  id="clearDemoDate"
+                  class="px-4 py-2 rounded-lg text-white text-sm font-medium transition"
+                  style="background: #B6771D;"
+                  onmouseover="this.style.background='#7B542F'"
+                  onmouseout="this.style.background='#B6771D'"
+                >
+                  Today
+                </button>
+              </div>
+            </div>
+
+            <form id="orderForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <input
+                type="text"
+                id="customerName"
+                placeholder="Customer Name"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              />
+              <select
+                id="cabinetType"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              >
+                <option value="" disabled selected>Cabinet Type</option>
+                <option value="Tall Cabinet">Tall Cabinet</option>
+                <option value="Hanging Cabinet">Hanging Cabinet</option>
+                <option value="Shelves">Shelves</option>
+              </select>
+              <select
+                id="color"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              >
+                <option value="">Color</option>
+                <option value="AG-62">AG-62 (#473220)</option>
+                <option value="AG-63">AG-63 (#c5ac80)</option>
+                <option value="AG-65">AG-65 (#bbcbb7)</option>
+                <option value="AG-66">AG-66 (#afb0ab)</option>
+                <option value="AG-67">AG-67 (#d8cd9c)</option>
+                <option value="AG-68">AG-68 (#c9c5bb)</option>
+                <option value="AG-69">AG-69 (#dacdb4)</option>
+                <option value="AG-70">AG-70 (#d1d8da)</option>
+                <option value="AG-71">AG-71 (#9ba2a4)</option>
+                <option value="AG-73">AG-73 (#92856d)</option>
+                <option value="AG-75">AG-75 (#755e8b)</option>
+                <option value="AG-76">AG-76 (#5b4032)</option>
+                <option value="AG-77">AG-77 (#9c8064)</option>
+                <option value="AG-78">AG-78 (#bfc1b5)</option>
+                <option value="AG-79">AG-79 (#3f4452)</option>
+                <option value="AG-80">AG-80 (#d3ebf3)</option>
+              </select>
+              <input
+                type="number"
+                id="quantity"
+                placeholder="Qty"
+                min="3"
+                max="50"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              />
               <input
                 type="date"
-                id="demoDate"
-                class="rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                id="completionDate"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
                 style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
               />
               <button
-                id="clearDemoDate"
-                class="px-4 py-2 rounded-lg text-white text-sm font-medium transition"
-                style="background: #B6771D;"
-                onmouseover="this.style.background='#7B542F'"
-                onmouseout="this.style.background='#B6771D'"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-          <form id="orderForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <input
-              type="text"
-              id="customerName"
-              placeholder="Customer Name"
-              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
-              required
-            />
-            <select
-              id="cabinetType"
-              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
-              required
-            >
-              <option value="" disabled selected>Cabinet Type</option>
-              <option value="Tall Cabinet">Tall Cabinet</option>
-              <option value="Hanging Cabinet">Hanging Cabinet</option>
-              <option value="Shelves">Shelves</option>
-            </select>
-            <select
-              id="color"
-              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
-              required
-            >
-              <option value="">Color</option>
-              <option value="AG-62">AG-62 (#473220)</option>
-              <option value="AG-63">AG-63 (#c5ac80)</option>
-              <option value="AG-65">AG-65 (#bbcbb7)</option>
-              <option value="AG-66">AG-66 (#afb0ab)</option>
-              <option value="AG-67">AG-67 (#d8cd9c)</option>
-              <option value="AG-68">AG-68 (#c9c5bb)</option>
-              <option value="AG-69">AG-69 (#dacdb4)</option>
-              <option value="AG-70">AG-70 (#d1d8da)</option>
-              <option value="AG-71">AG-71 (#9ba2a4)</option>
-              <option value="AG-73">AG-73 (#92856d)</option>
-              <option value="AG-75">AG-75 (#755e8b)</option>
-              <option value="AG-76">AG-76 (#5b4032)</option>
-              <option value="AG-77">AG-77 (#9c8064)</option>
-              <option value="AG-78">AG-78 (#bfc1b5)</option>
-              <option value="AG-79">AG-79 (#3f4452)</option>
-              <option value="AG-80">AG-80 (#d3ebf3)</option>
-            </select>
-            <input
-              type="number"
-              id="quantity"
-              placeholder="Qty"
-              min="3"
-              max="50"
-              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
-              required
-            />
-            <input
-              type="date"
-              id="completionDate"
-              class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
-              style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
-              required
-            />
-            <button
-              type="submit"
-              class="rounded-lg text-white px-6 py-3 font-semibold transition shadow-lg whitespace-nowrap"
-              style="background: #FF9D00;"
-              onmouseover="this.style.background='#B6771D'"
-              onmouseout="this.style.background='#FF9D00'"
-            >
-              Add Order
-            </button>
-          </form>
-        </div>
-
-        <!-- Orders Table with Gantt -->
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden print-full" style="border: 2px solid #FFCF71;">
-          <div class="flex justify-between items-center p-8 no-print" style="border-bottom: 2px solid #FFCF71;">
-            <div>
-              <h2 class="text-xl font-semibold" style="color: #7B542F;">Orders</h2>
-              <p class="text-sm mt-1" style="color: #B6771D;">All production orders</p>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Status</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Priority</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Product</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Customer</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Start</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">End</th>
-                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Days</th>
-                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Qty</th>
-                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Color</th>
-                  <th class="text-center p-4 font-semibold" style="color: #7B542F;">Progress</th>
-                  <th class="text-left p-4 font-semibold" style="color: #7B542F;">Timeline</th>
-                  <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="ordersTable" class="divide-y divide-slate-200">
-                <tr>
-                  <td colspan="12" class="p-8 text-center text-slate-500">
-                    Loading orders...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Machine Schedule -->
-        <section
-          id="projectView"
-          class="mt-10 bg-white rounded-2xl p-8 shadow-lg hidden"
-          style="border: 2px solid #FFCF71;"
-        >
-          <div class="flex items-center justify-between gap-3 mb-8 pb-6" style="border-bottom: 2px solid #FFCF71;">
-            <div>
-              <h3 class="text-xl font-semibold" style="color: #7B542F;">Machine Schedule</h3>
-              <p class="text-sm mt-1" id="projectSubtitle" style="color: #B6771D;">
-                Machine timeline for selected order
-              </p>
-            </div>
-            <div class="flex gap-2">
-              <button
-                id="downloadPdfBtn"
-                class="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
+                type="submit"
+                class="rounded-lg text-white px-6 py-3 font-semibold transition shadow-lg whitespace-nowrap"
                 style="background: #FF9D00;"
                 onmouseover="this.style.background='#B6771D'"
                 onmouseout="this.style.background='#FF9D00'"
               >
-                Download PDF
+                Add Order
               </button>
-              <button
-                id="closeProjectView"
-                class="px-4 py-2 rounded-lg transition font-medium text-white"
-                style="background: #7B542F;"
-                onmouseover="this.style.background='#B6771D'"
-                onmouseout="this.style.background='#7B542F'"
+            </form>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-lg overflow-hidden print-full" style="border: 2px solid #FFCF71;">
+            <div class="flex justify-between items-center p-8 no-print" style="border-bottom: 2px solid #FFCF71;">
+              <div>
+                <h2 class="text-xl font-semibold" style="color: #7B542F;">Orders</h2>
+                <p class="text-sm mt-1" style="color: #B6771D;">All production orders</p>
+              </div>
+            </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Status</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Priority</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Product</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Customer</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Start</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">End</th>
+                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Days</th>
+                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Qty</th>
+                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Color</th>
+                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Progress</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Timeline</th>
+                    <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTable" class="divide-y divide-slate-200">
+                  <tr>
+                    <td colspan="12" class="p-8 text-center" style="color: #B6771D;">
+                      Loading orders...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination-controls p-4 no-print" style="border-top: 1px solid #FFCF71;">
+              <button id="ordersPrevBtn" type="button" class="pagination-btn">Prev</button>
+              <span id="ordersPageInfo" class="pagination-info">Page 1 of 1</span>
+              <button id="ordersNextBtn" type="button" class="pagination-btn">Next</button>
+            </div>
+          </div>
+
+          <div id="machineUtilizationSection" class="mt-10 bg-white rounded-2xl p-8 shadow-lg no-print hidden" style="border: 2px solid #FFCF71;">
+            <div class="mb-6">
+              <h3 class="text-xl font-semibold" style="color: #7B542F;">Machine Utilization List</h3>
+              <p class="text-sm mt-1" style="color: #B6771D;">Current utilization across all production stages</p>
+            </div>
+            <div id="machineUtilizationList" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
+              <p class="text-sm" style="color: #B6771D;">Loading utilization...</p>
+            </div>
+          </div>
+
+          <section
+            id="projectView"
+            class="mt-10 bg-white rounded-2xl p-8 shadow-lg hidden"
+            style="border: 2px solid #FFCF71;"
+          >
+            <div class="flex items-center justify-between gap-3 mb-8 pb-6" style="border-bottom: 2px solid #FFCF71;">
+              <div>
+                <h3 class="text-xl font-semibold" style="color: #7B542F;">Machine Schedule</h3>
+                <p class="text-sm mt-1" id="projectSubtitle" style="color: #B6771D;">
+                  Machine timeline for selected order
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  id="downloadPdfBtn"
+                  class="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
+                  style="background: #FF9D00;"
+                  onmouseover="this.style.background='#B6771D'"
+                  onmouseout="this.style.background='#FF9D00'"
+                >
+                  Download PDF
+                </button>
+                <button
+                  id="closeProjectView"
+                  class="px-4 py-2 rounded-lg transition font-medium text-white"
+                  style="background: #7B542F;"
+                  onmouseover="this.style.background='#B6771D'"
+                  onmouseout="this.style.background='#7B542F'"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <div
+                id="timelineWeeks"
+                class="grid grid-cols-[12rem_1fr] items-center text-[12px] mb-4"
+                style="color: #B6771D;"
               >
-                Close
-              </button>
+                <div></div>
+                <div id="timelineWeekLabels" class="grid w-full font-semibold"></div>
+              </div>
+              <div class="space-y-4" id="timelineSteps"></div>
             </div>
-          </div>
 
-          <div class="mt-6">
-            <div
-              id="timelineWeeks"
-              class="grid grid-cols-[12rem_1fr] items-center text-[12px] mb-4"
-              style="color: #B6771D;"
-            >
-              <div></div>
-              <div id="timelineWeekLabels" class="grid w-full font-semibold"></div>
+            <div class="mt-8 pt-6 border-t border-slate-200 text-center text-sm" style="color: #B6771D;">
+              Machine Schedule Visualization
             </div>
-            <div class="space-y-4" id="timelineSteps">
-              <!-- Steps injected by script.js -->
-            </div>
-          </div>
+          </section>
+        </div>
 
-          <div class="mt-8 pt-6 border-t border-slate-200 text-center text-sm text-slate-500">
-            Machine Schedule Visualization
+        <div id="cabinetPage" class="hidden">
+          <div class="rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71; background: #F6F6F6;">
+            <div class="mb-7">
+              <h2 class="text-4xl font-semibold" style="color: #7B542F;">Cabinet Specifications</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">Standard component dimensions and approved color references</p>
+            </div>
+
+            <div class="spec-sheet-grid">
+              <div class="spec-sheet-card">
+                <div class="spec-sheet-title">Tall Cabinet</div>
+                <table class="spec-table">
+                  <thead>
+                    <tr>
+                      <th>Component</th>
+                      <th>Quantity</th>
+                      <th>Size (mm)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Top Panel</td><td>1 pc</td><td>600 x 560</td></tr>
+                    <tr><td>Bottom Panel</td><td>1 pc</td><td>600 x 560</td></tr>
+                    <tr><td>Side Panels</td><td>2 pcs</td><td>2100 x 560</td></tr>
+                    <tr><td>Back Panel</td><td>1 pc</td><td>600 x 2100</td></tr>
+                    <tr><td>Doors</td><td>2 pcs</td><td>300 x 2100</td></tr>
+                    <tr><td>Fixed Shelves</td><td>2 pcs</td><td>600 x 560</td></tr>
+                  </tbody>
+                </table>
+                <p class="spec-note">
+                  Hardware: 4 hinges, 2 handles, 8 screws.<br />
+                  Machine/Holes: edge banding + hinge/cam points.
+                </p>
+              </div>
+
+              <div class="spec-sheet-card">
+                <div class="spec-sheet-title">Hanging Cabinet</div>
+                <table class="spec-table">
+                  <thead>
+                    <tr>
+                      <th>Component</th>
+                      <th>Quantity</th>
+                      <th>Size (mm)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Top Panel</td><td>1 pc</td><td>1200 x 320</td></tr>
+                    <tr><td>Bottom Panel</td><td>1 pc</td><td>1200 x 320</td></tr>
+                    <tr><td>Side Panels</td><td>2 pcs</td><td>700 x 320</td></tr>
+                    <tr><td>Back Panel</td><td>1 pc</td><td>1200 x 700</td></tr>
+                    <tr><td>Doors</td><td>4 pcs</td><td>300 x 700</td></tr>
+                    <tr><td>Fixed Shelves</td><td>2 pcs</td><td>1200 x 320</td></tr>
+                  </tbody>
+                </table>
+                <p class="spec-note">
+                  Hardware: 8 hinges, 4 handles, hanger set.<br />
+                  Machine/Holes: shelf pin + hinge cup points.
+                </p>
+              </div>
+
+              <div class="spec-sheet-card">
+                <div class="spec-sheet-title">Shelves</div>
+                <table class="spec-table">
+                  <thead>
+                    <tr>
+                      <th>Component</th>
+                      <th>Quantity</th>
+                      <th>Size (mm)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Top Panel</td><td>1 pc</td><td>800 x 300</td></tr>
+                    <tr><td>Bottom Panel</td><td>1 pc</td><td>800 x 300</td></tr>
+                    <tr><td>Side Panels</td><td>2 pcs</td><td>1800 x 300</td></tr>
+                    <tr><td>Shelves</td><td>6 pcs</td><td>800 x 300</td></tr>
+                    <tr><td>Back Panel</td><td>1 pc</td><td>800 x 1800</td></tr>
+                    <tr><td>Support Rails</td><td>2 pcs</td><td>760 x 70</td></tr>
+                  </tbody>
+                </table>
+                <p class="spec-note">
+                  Hardware: 24 screws, 12 dowels, wall bracket set.<br />
+                  Machine/Holes: cam-lock + bracket holes.
+                </p>
+              </div>
+            </div>
+
+            <div class="swatch-grid mt-10">
+              <div>
+                <h3 class="text-4xl font-bold mb-4 text-center" style="color: #2f2418;">Warm Browns / Beiges</h3>
+                <div class="swatch-list">
+                  <div class="swatch-item" style="background:#473220; color:#ffffff;">#473220</div>
+                  <div class="swatch-item" style="background:#afb0ab; color:#2f2418;">#afb0ab</div>
+                  <div class="swatch-item" style="background:#9c8064; color:#ffffff;">#9c8064</div>
+                  <div class="swatch-item" style="background:#d8cc9c; color:#2f2418;">#d8cc9c</div>
+                  <div class="swatch-item" style="background:#5b4032; color:#ffffff;">#5b4032</div>
+                  <div class="swatch-item" style="background:#c5ac80; color:#2f2418;">#c5ac80</div>
+                  <div class="swatch-item" style="background:#92856d; color:#ffffff;">#92856d</div>
+                  <div class="swatch-item" style="background:#dacdb4; color:#2f2418;">#dacdb4</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-4xl font-bold mb-4 text-center" style="color: #2f2418;">Neutral Greys</h3>
+                <div class="swatch-list">
+                  <div class="swatch-item" style="background:#3f4452; color:#ffffff;">#3f4452</div>
+                  <div class="swatch-item" style="background:#756e6b; color:#ffffff;">#756e6b</div>
+                  <div class="swatch-item" style="background:#d1d8da; color:#2f2418;">#d1d8da</div>
+                  <div class="swatch-item" style="background:#bfc1b5; color:#2f2418;">#bfc1b5</div>
+                  <div class="swatch-item" style="background:#9ba2a4; color:#2f2418;">#9ba2a4</div>
+                  <div class="swatch-item" style="background:#bbcbb7; color:#2f2418;">#bbcbb7</div>
+                  <div class="swatch-item" style="background:#d3ebf3; color:#2f2418;">#d3ebf3</div>
+                  <div class="swatch-item" style="background:#c9c5bb; color:#2f2418;">#c9c5bb</div>
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
         </div>
 
         <div id="decisionPage" class="hidden">
           <div class="bg-white rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71;">
             <div class="mb-6">
-              <h2 class="text-xl font-semibold" style="color: #7B542F;">Decision Variables</h2>
-              <p class="text-sm mt-1" style="color: #B6771D;">Model definition and constraints</p>
+              <h2 class="text-xl font-semibold" style="color: #7B542F;">Optimization Model</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">Model variables, objective, and constraints</p>
             </div>
 
-            <div class="space-y-6 text-sm" style="color: #4b5563;">
+            <div class="space-y-6 text-sm" style="color: #3f2a1c;">
               <div>
                 <h3 class="text-base font-semibold" style="color: #7B542F;">3.3 Indices</h3>
                 <p class="mt-2">Let: i = 1,2,3,...,N (customer orders/jobs)</p>
@@ -366,13 +795,13 @@
                   <p>1 CNC Cutting (man-operated)</p>
                   <p>2 CNC Edging (man-operated)</p>
                   <p>3 CNC Routing (man-operated)</p>
-                  <p>4 Assembly-Finishing-Packing (manual station)</p>
+                  <p>4 Assembly-QA-Packing (manual station)</p>
                 </div>
               </div>
 
               <div>
-                <h3 class="text-base font-semibold" style="color: #7B542F;">3.4 Decision Variables and Parameters</h3>
-                <p class="mt-2">Decision Variables: S_i = Start time of order i</p>
+                <h3 class="text-base font-semibold" style="color: #7B542F;">3.4 Optimization Variables and Parameters</h3>
+                <p class="mt-2">Optimization Variables: S_i = Start time of order i</p>
                 <p>C_i = Completion time of order i</p>
                 <p>C_max = Makespan (maximum completion time)</p>
                 <p class="mt-2">Parameters: p_{im} = Processing time of order i on machine m</p>
@@ -382,7 +811,7 @@
               <div>
                 <h3 class="text-base font-semibold" style="color: #7B542F;">3.5 Objective Function</h3>
                 <p class="mt-2">Minimize C_max</p>
-                <p>C_max ≥ C_i for all i ∈ {1,...,N}</p>
+                <p>C_max >= C_i for all i in {1,...,N}</p>
                 <p class="mt-2">The model minimizes the maximum completion time among all customer orders to achieve the shortest overall production schedule.</p>
               </div>
 
@@ -390,90 +819,111 @@
                 <h3 class="text-base font-semibold" style="color: #7B542F;">3.6 Model Constraints</h3>
                 <div class="mt-2">
                   <p class="font-semibold" style="color: #7B542F;">3.6.1 Machine Capacity Constraints</p>
-                  <p>∑_{i=1}^{N} p_{i1} ≤ H_1</p>
-                  <p>∑_{i=1}^{N} p_{i2} ≤ H_2</p>
-                  <p>∑_{i=1}^{N} p_{i3} ≤ H_3</p>
-                  <p>∑_{i=1}^{N} p_{i4} ≤ H_4</p>
+                  <p>sum(i=1..N) p_{i1} <= H_1</p>
+                  <p>sum(i=1..N) p_{i2} <= H_2</p>
+                  <p>sum(i=1..N) p_{i3} <= H_3</p>
+                  <p>sum(i=1..N) p_{i4} <= H_4</p>
                 </div>
                 <div class="mt-4">
                   <p class="font-semibold" style="color: #7B542F;">3.6.2 Operation Sequence Constraints</p>
-                  <p>CNC Cutting → Edging → Routing → Assembly-Packing</p>
-                  <p>S_{i2} ≥ S_{i1} + p_{i1}</p>
-                  <p>S_{i3} ≥ S_{i2} + p_{i2}</p>
-                  <p>S_{i4} ≥ S_{i3} + p_{i3}</p>
+                  <p>CNC Cutting -> Edging -> Routing -> Assembly -> Quality Assurance -> Packing</p>
+                  <p>S_{i2} >= S_{i1} + p_{i1}</p>
+                  <p>S_{i3} >= S_{i2} + p_{i2}</p>
+                  <p>S_{i4} >= S_{i3} + p_{i3}</p>
+                  <p>S_{i5} >= S_{i4} + p_{i4}</p>
+                  <p>S_{i6} >= S_{i5} + p_{i5}</p>
                 </div>
                 <div class="mt-4">
                   <p class="font-semibold" style="color: #7B542F;">3.6.3 Completion Time Definition</p>
-                  <p>C_i = S_{i4} + p_{i4}</p>
+                  <p>C_i = S_{i6} + p_{i6}</p>
                 </div>
                 <div class="mt-4">
                   <p class="font-semibold" style="color: #7B542F;">3.6.4 Makespan Constraint</p>
-                  <p>C_max ≥ C_i for all i ∈ {1,...,N}</p>
+                  <p>C_max >= C_i for all i in {1,...,N}</p>
                 </div>
                 <div class="mt-4">
                   <p class="font-semibold" style="color: #7B542F;">3.6.5 Non-Negativity Constraints</p>
-                  <p>S_i ≥ 0, C_i ≥ 0, p_{im} ≥ 0</p>
+                  <p>S_i >= 0, C_i >= 0, p_{im} >= 0</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script>
-      // Color select visual feedback
-      const colorSelect = document.getElementById('color');
+      const colorSelect = document.getElementById("color");
       const colorMap = {
-        'AG-62': { bg: '#473220', text: '#ffffff' },
-        'AG-63': { bg: '#c5ac80', text: '#000000' },
-        'AG-65': { bg: '#bbcbb7', text: '#000000' },
-        'AG-66': { bg: '#afb0ab', text: '#000000' },
-        'AG-67': { bg: '#d8cd9c', text: '#000000' },
-        'AG-68': { bg: '#c9c5bb', text: '#000000' },
-        'AG-69': { bg: '#dacdb4', text: '#000000' },
-        'AG-70': { bg: '#d1d8da', text: '#000000' },
-        'AG-71': { bg: '#9ba2a4', text: '#000000' },
-        'AG-73': { bg: '#92856d', text: '#000000' },
-        'AG-75': { bg: '#755e8b', text: '#ffffff' },
-        'AG-76': { bg: '#5b4032', text: '#ffffff' },
-        'AG-77': { bg: '#9c8064', text: '#000000' },
-        'AG-78': { bg: '#bfc1b5', text: '#000000' },
-        'AG-79': { bg: '#3f4452', text: '#ffffff' },
-        'AG-80': { bg: '#d3ebf3', text: '#000000' }
+        "AG-62": { bg: "#473220", text: "#ffffff" },
+        "AG-63": { bg: "#c5ac80", text: "#000000" },
+        "AG-65": { bg: "#bbcbb7", text: "#000000" },
+        "AG-66": { bg: "#afb0ab", text: "#000000" },
+        "AG-67": { bg: "#d8cd9c", text: "#000000" },
+        "AG-68": { bg: "#c9c5bb", text: "#000000" },
+        "AG-69": { bg: "#dacdb4", text: "#000000" },
+        "AG-70": { bg: "#d1d8da", text: "#000000" },
+        "AG-71": { bg: "#9ba2a4", text: "#000000" },
+        "AG-73": { bg: "#92856d", text: "#000000" },
+        "AG-75": { bg: "#755e8b", text: "#ffffff" },
+        "AG-76": { bg: "#5b4032", text: "#ffffff" },
+        "AG-77": { bg: "#9c8064", text: "#000000" },
+        "AG-78": { bg: "#bfc1b5", text: "#000000" },
+        "AG-79": { bg: "#3f4452", text: "#ffffff" },
+        "AG-80": { bg: "#d3ebf3", text: "#000000" }
       };
-      
-      colorSelect.addEventListener('change', function() {
-        const color = colorMap[this.value];
-        if (color) {
-          this.style.backgroundColor = color.bg;
-          this.style.color = color.text;
-        } else {
-          this.style.backgroundColor = '';
-          this.style.color = '';
-        }
-      });
 
-      const navOrders = document.getElementById('navOrders');
-      const navDecision = document.getElementById('navDecision');
-      const ordersPage = document.getElementById('ordersPage');
-      const decisionPage = document.getElementById('decisionPage');
+      if (colorSelect) {
+        colorSelect.addEventListener("change", function () {
+          const color = colorMap[this.value];
+          if (color) {
+            this.style.backgroundColor = color.bg;
+            this.style.color = color.text;
+          } else {
+            this.style.backgroundColor = "";
+            this.style.color = "";
+          }
+        });
+      }
+
+      const navDashboard = document.getElementById("navDashboard");
+      const navOrders = document.getElementById("navOrders");
+      const navCabinet = document.getElementById("navCabinet");
+      const navDecision = document.getElementById("navDecision");
+      const dashboardPage = document.getElementById("dashboardPage");
+      const ordersPage = document.getElementById("ordersPage");
+      const cabinetPage = document.getElementById("cabinetPage");
+      const decisionPage = document.getElementById("decisionPage");
 
       const setActivePage = (active) => {
-        const isOrders = active === 'orders';
-        ordersPage.classList.toggle('hidden', !isOrders);
-        decisionPage.classList.toggle('hidden', isOrders);
-        navOrders.classList.toggle('active', isOrders);
-        navDecision.classList.toggle('active', !isOrders);
-        navOrders.setAttribute('aria-selected', isOrders);
-        navDecision.setAttribute('aria-selected', !isOrders);
+        const isDashboard = active === "dashboard";
+        const isOrders = active === "orders";
+        const isCabinet = active === "cabinet";
+        const isDecision = active === "decision";
+
+        dashboardPage.classList.toggle("hidden", !isDashboard);
+        ordersPage.classList.toggle("hidden", !isOrders);
+        cabinetPage.classList.toggle("hidden", !isCabinet);
+        decisionPage.classList.toggle("hidden", !isDecision);
+
+        navDashboard.classList.toggle("active", isDashboard);
+        navOrders.classList.toggle("active", isOrders);
+        navCabinet.classList.toggle("active", isCabinet);
+        navDecision.classList.toggle("active", isDecision);
+
+        navDashboard.setAttribute("aria-selected", isDashboard);
+        navOrders.setAttribute("aria-selected", isOrders);
+        navCabinet.setAttribute("aria-selected", isCabinet);
+        navDecision.setAttribute("aria-selected", isDecision);
       };
 
-      navOrders.addEventListener('click', () => setActivePage('orders'));
-      navDecision.addEventListener('click', () => setActivePage('decision'));
+      navDashboard.addEventListener("click", () => setActivePage("dashboard"));
+      navOrders.addEventListener("click", () => setActivePage("orders"));
+      navCabinet.addEventListener("click", () => setActivePage("cabinet"));
+      navDecision.addEventListener("click", () => setActivePage("decision"));
+      setActivePage("dashboard");
     </script>
     <script src="script.js"></script>
   </body>

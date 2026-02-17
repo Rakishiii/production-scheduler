@@ -10,20 +10,21 @@ app = Flask(__name__)
 CORS(app)
 
 # Simple file-based storage
-ORDERS_FILE = "orders.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 
 
 def load_orders():
     """Load orders from JSON file."""
     if os.path.exists(ORDERS_FILE):
-        with open(ORDERS_FILE, "r") as f:
+        with open(ORDERS_FILE, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     return []
 
 
 def save_orders(orders):
     """Save orders to JSON file."""
-    with open(ORDERS_FILE, "w") as f:
+    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
         json.dump(orders, f, indent=2)
 
 
@@ -72,10 +73,11 @@ def calculate_machine_schedule(orders):
     
     # Process definitions with required worker types
     processes = [
-        {"name": "CNC Cutting", "machine": "M01", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
-        {"name": "CNC Edging", "machine": "M02", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
-        {"name": "CNC Routing", "machine": "M03", "worker_type": "CNC Operator", "hours_per_cabinet": 2},
-        {"name": "Assembly", "machine": None, "worker_type": "Carpenter", "hours_per_cabinet": 3},
+        {"name": "CNC Cutting", "machine": "M01", "worker_type": "CNC Operator", "hours_per_cabinet": 1.5},
+        {"name": "CNC Edging", "machine": "M02", "worker_type": "CNC Operator", "hours_per_cabinet": 1.5},
+        {"name": "CNC Routing", "machine": "M03", "worker_type": "CNC Operator", "hours_per_cabinet": 1.5},
+        {"name": "Assembly", "machine": None, "worker_type": "Carpenter", "hours_per_cabinet": 4},
+        {"name": "Quality Assurance", "machine": None, "worker_type": "Carpenter", "hours_per_cabinet": 0.5},
         {"name": "Packing", "machine": None, "worker_type": "Helper", "hours_per_cabinet": 1}
     ]
     
@@ -162,11 +164,12 @@ def calculate_scheduled_dates(completion_date, quantity, orders):
     """Calculate realistic start date based on machine capacity."""
     # Production stages and hours per cabinet
     stages = {
-        "CNC Cutting": 2,    # 2 hours per cabinet
-        "CNC Edging": 2,     # 2 hours per cabinet  
-        "CNC Routing": 2,    # 2 hours per cabinet
-        "Assembly": 3,       # 3 hours per cabinet
-        "Packing": 1         # 1 hour per cabinet
+        "CNC Cutting": 1.5,          # 15%
+        "CNC Edging": 1.5,           # 15%
+        "CNC Routing": 1.5,          # 15%
+        "Assembly": 4,               # 40%
+        "Quality Assurance": 0.5,    # 5%
+        "Packing": 1                 # 10%
     }
     
     total_hours = sum(stages.values()) * quantity
@@ -236,27 +239,41 @@ def get_orders():
         end = datetime.strptime(order["completion_date"], "%Y-%m-%d").date()
         total_days = (end - start).days
         elapsed_days = (today - start).days
+        status_text = str(order.get("status", "")).strip().lower()
 
-        # Calculate progress
-        if elapsed_days >= total_days:
+        # Keep progress/status consistent for finished orders.
+        if status_text == "completed":
             order["progress"] = 100
-        elif elapsed_days <= 0:
-            order["progress"] = 0
         else:
-            daily_increment = calculate_daily_progress(total_days)
-            order["progress"] = min(100, daily_increment * elapsed_days)
+            # Calculate progress from date window.
+            if elapsed_days >= total_days:
+                order["progress"] = 100
+            elif elapsed_days <= 0:
+                order["progress"] = 0
+            else:
+                daily_increment = calculate_daily_progress(total_days)
+                order["progress"] = min(100, daily_increment * elapsed_days)
+
+        if (order.get("progress") or 0) >= 100:
+            order["status"] = "Completed"
+        else:
+            order["status"] = "In Progress"
 
         # Determine priority (HIGH/MEDIUM/LOW)
-        days_remaining = (end - today).days
-        if days_remaining <= 7:
-            order["priority"] = "HIGH"
-            order["machines"] = 6
-        elif days_remaining <= 21:
-            order["priority"] = "MEDIUM"
-            order["machines"] = 3
-        else:
+        if order["status"] == "Completed":
             order["priority"] = "LOW"
-            order["machines"] = 1
+            order["machines"] = 0
+        else:
+            days_remaining = (end - today).days
+            if days_remaining <= 7:
+                order["priority"] = "HIGH"
+                order["machines"] = 6
+            elif days_remaining <= 21:
+                order["priority"] = "MEDIUM"
+                order["machines"] = 3
+            else:
+                order["priority"] = "LOW"
+                order["machines"] = 1
 
     # Sort by earliest due date first (EDD scheduling)
     orders.sort(key=lambda x: x["completion_date"])
