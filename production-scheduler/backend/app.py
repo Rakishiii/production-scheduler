@@ -9,7 +9,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Simple file-based storage
+# Persist orders in a local JSON file.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 
@@ -44,7 +44,7 @@ def calculate_daily_progress(days):
 
 def calculate_machine_schedule(orders):
     """Calculate resource allocation (workers and machines) for each order."""
-    # Define available resources
+    # Resource pools initialized as available today.
     machines = {
         "M01": {"name": "M01 CNC Cutting", "process": "CNC Cutting", "available_until": datetime.now().date()},
         "M02": {"name": "M02 CNC Edging", "process": "CNC Edging", "available_until": datetime.now().date()},
@@ -71,7 +71,7 @@ def calculate_machine_schedule(orders):
         "W17": {"name": "W17", "type": "Helper", "available_until": datetime.now().date()}
     }
     
-    # Process definitions with required worker types
+    # Process template: machine binding, labor type, and per-cabinet hours.
     processes = [
         {"name": "CNC Cutting", "machine": "M01", "worker_type": "CNC Operator", "hours_per_cabinet": 1.5},
         {"name": "CNC Edging", "machine": "M02", "worker_type": "CNC Operator", "hours_per_cabinet": 1.5},
@@ -83,7 +83,7 @@ def calculate_machine_schedule(orders):
     
     work_hours_per_day = 8
     
-    # Sort orders by priority (HIGH first) and completion date
+    # Dispatch rule: priority first, then earliest due date.
     sorted_orders = sorted(orders, key=lambda x: (
         {"HIGH": 0, "MEDIUM": 1, "LOW": 2}.get(x.get("priority", "LOW"), 2),
         x.get("completion_date", "")
@@ -100,7 +100,7 @@ def calculate_machine_schedule(orders):
         
         order_schedule = {}
         
-        # Schedule through each process in sequence
+        # Enforce fixed process sequence for each order.
         for process in processes:
             process_name = process["name"]
             machine_id = process["machine"]
@@ -108,7 +108,7 @@ def calculate_machine_schedule(orders):
             hours_needed = process["hours_per_cabinet"] * quantity
             days_needed = max(1, int(hours_needed / work_hours_per_day))
             
-            # Find first available worker of required type
+            # Select the earliest-available worker for the required role.
             available_worker = None
             earliest_worker_date = None
             for worker_id, worker in workers.items():
@@ -117,7 +117,7 @@ def calculate_machine_schedule(orders):
                         earliest_worker_date = worker["available_until"]
                         available_worker = worker_id
             
-            # Determine start date based on worker and machine availability
+            # Stage start is constrained by order, worker, and machine availability.
             if machine_id:
                 machine = machines[machine_id]
                 start_date = max(
@@ -133,7 +133,7 @@ def calculate_machine_schedule(orders):
             
             end_date = start_date + timedelta(days=days_needed)
             
-            # Store schedule info
+            # Store stage dates for schedule visualization.
             order_schedule[process_name] = {
                 "start": start_date.strftime("%Y-%m-%d"),
                 "end": end_date.strftime("%Y-%m-%d"),
@@ -142,7 +142,7 @@ def calculate_machine_schedule(orders):
                 "machine": machine_id if machine_id else "N/A"
             }
             
-            # Add to assignments list for display
+            # Store flattened rows for frontend assignment table.
             assignments.append({
                 "order": order_name,
                 "process": process_name,
@@ -150,7 +150,7 @@ def calculate_machine_schedule(orders):
                 "machine": machine_id if machine_id else "N/A"
             })
             
-            # Update resource availability
+            # Reserve resources until this stage completes.
             workers[available_worker]["available_until"] = end_date
             if machine_id:
                 machines[machine_id]["available_until"] = end_date
@@ -162,7 +162,7 @@ def calculate_machine_schedule(orders):
 
 def calculate_scheduled_dates(completion_date, quantity, orders):
     """Calculate realistic start date based on machine capacity."""
-    # Production stages and hours per cabinet
+    # Standard process hours per cabinet.
     stages = {
         "CNC Cutting": 1.5,          # 15%
         "CNC Edging": 1.5,           # 15%
@@ -176,7 +176,7 @@ def calculate_scheduled_dates(completion_date, quantity, orders):
     machines_available = 6  # Total machines
     work_hours_per_day = 8  # 8-hour workday
     
-    # Calculate machine capacity usage per day from existing orders
+    # Build daily machine-load map from active orders.
     daily_capacity = {}
     for order in orders:
         if order.get("status") != "Completed":
@@ -189,33 +189,32 @@ def calculate_scheduled_dates(completion_date, quantity, orders):
                 day_str = day.strftime("%Y-%m-%d")
                 daily_capacity[day_str] = daily_capacity.get(day_str, 0) + order["machines"]
     
-    # Find earliest available start date
+    # Compute candidate start from the requested due date.
     target_end = datetime.strptime(completion_date, "%Y-%m-%d").date()
     days_needed = max(1, int(total_hours / (machines_available * work_hours_per_day)))
     
-    # Work backwards from completion date to find start date
+    # Back-schedule from requested completion.
     current_start = target_end - timedelta(days=days_needed)
     current_date = datetime.now().date()
     
-    # Ensure start date is not in the past
+    # Prevent scheduling in the past.
     if current_start < current_date:
         current_start = current_date
     
-    # Check if we have capacity, if not, push start date earlier
+    # Shift start earlier when daily machine capacity is exceeded.
     machines_needed = 1
     for i in range(days_needed):
         check_date = (current_start + timedelta(days=i)).strftime("%Y-%m-%d")
         used = daily_capacity.get(check_date, 0)
         if used + machines_needed > machines_available:
-            # Need to start earlier
             current_start = current_start - timedelta(days=1)
     
-    # Recalculate end date based on actual start
+    # Recompute end date after start-date adjustments.
     actual_end = current_start + timedelta(days=days_needed)
     
-    # If calculated end is after requested completion, it's delayed
+    # Clamp end date to requested completion.
     if actual_end > target_end:
-        actual_end = target_end  # Keep requested date, mark as priority
+        actual_end = target_end
     
     return current_start.strftime("%Y-%m-%d"), actual_end.strftime("%Y-%m-%d")
 
@@ -224,7 +223,7 @@ def calculate_scheduled_dates(completion_date, quantity, orders):
 def get_orders():
     """Get all orders with calculated progress, sorted by due date."""
     orders = load_orders()
-    # Optional date override for demo/testing (YYYY-MM-DD)
+    # Optional reference date override for deterministic runs (YYYY-MM-DD).
     date_override = request.args.get("date")
     if date_override:
         try:
@@ -241,11 +240,11 @@ def get_orders():
         elapsed_days = (today - start).days
         status_text = str(order.get("status", "")).strip().lower()
 
-        # Keep progress/status consistent for finished orders.
+        # Completed orders remain pinned at 100%.
         if status_text == "completed":
             order["progress"] = 100
         else:
-            # Calculate progress from date window.
+            # Active orders derive progress from elapsed schedule days.
             if elapsed_days >= total_days:
                 order["progress"] = 100
             elif elapsed_days <= 0:
@@ -259,7 +258,7 @@ def get_orders():
         else:
             order["status"] = "In Progress"
 
-        # Determine priority (HIGH/MEDIUM/LOW)
+        # Recompute urgency class from days remaining.
         if order["status"] == "Completed":
             order["priority"] = "LOW"
             order["machines"] = 0
@@ -275,10 +274,10 @@ def get_orders():
                 order["priority"] = "LOW"
                 order["machines"] = 1
 
-    # Sort by earliest due date first (EDD scheduling)
+    # Return orders in earliest-due-date order.
     orders.sort(key=lambda x: x["completion_date"])
     
-    # Calculate machine schedule with resource allocation
+    # Build schedule and assignment payloads for the frontend.
     result = calculate_machine_schedule(orders)
     
     return jsonify({
@@ -293,7 +292,7 @@ def create_order():
     """Create a new order."""
     payload = request.get_json(silent=True) or {}
     
-    # Validate input
+    # Validate required fields and quantity limits.
     required = ["customer_name", "cabinet_type", "color", "quantity", "completion_date"]
     if not all(payload.get(key) for key in required):
         return jsonify({"error": "Missing required fields"}), 400
@@ -305,12 +304,12 @@ def create_order():
     except (TypeError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
 
-    # Create order with scheduled dates
+    # Create and persist a new order record.
     orders = load_orders()
     today = datetime.now().date()
     completion_date = payload["completion_date"]
     
-    # Calculate priority based on completion date
+    # Initialize urgency and machine count from due-date distance.
     end_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
     days_remaining = (end_date - today).days
     
