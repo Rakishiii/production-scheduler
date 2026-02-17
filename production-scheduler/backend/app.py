@@ -293,7 +293,7 @@ def create_order():
     payload = request.get_json(silent=True) or {}
     
     # Validate required fields and quantity limits.
-    required = ["customer_name", "cabinet_type", "color", "quantity", "completion_date"]
+    required = ["customer_name", "cabinet_type", "color", "quantity", "completion_date", "start_date"]
     if not all(payload.get(key) for key in required):
         return jsonify({"error": "Missing required fields"}), 400
     
@@ -308,6 +308,7 @@ def create_order():
     orders = load_orders()
     today = datetime.now().date()
     completion_date = payload["completion_date"]
+    start_date = payload["start_date"]
     
     # Initialize urgency and machine count from due-date distance.
     end_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
@@ -329,7 +330,7 @@ def create_order():
         "cabinet_type": payload["cabinet_type"],
         "color": payload["color"],
         "quantity": qty,
-        "start_date": today.strftime("%Y-%m-%d"),
+        "start_date": start_date,
         "completion_date": completion_date,
         "status": "In Progress",
         "progress": 0,

@@ -1,7 +1,7 @@
 ﻿// Production Scheduler Frontend
 // API endpoint used by the frontend. Switch to localhost for local backend runs.
- const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
-//const BACKEND_URL = "http://127.0.0.1:5000";
+ //const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+const BACKEND_URL = "http://127.0.0.1:5000";
 
 const CABINET_UNIT_PRICES = {
   "Tall Cabinet": 15000,
@@ -653,11 +653,15 @@ if (orderForm) {
   orderForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const demoDate = demoDateInput?.value;
+    const today = new Date().toISOString().split('T')[0];
+
     const payload = {
       customer_name: document.getElementById("customerName").value,
       cabinet_type: document.getElementById("cabinetType").value,
       color: document.getElementById("color").value,
       quantity: parseInt(document.getElementById("quantity").value, 10),
+      start_date: demoDate || today,
       completion_date: document.getElementById("completionDate").value,
     };
 
