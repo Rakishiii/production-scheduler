@@ -1,5 +1,6 @@
 ﻿// Production Scheduler Frontend
-const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+// API endpoint used by the frontend. Switch to localhost for local backend runs.
+ const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
 //const BACKEND_URL = "http://127.0.0.1:5000";
 
 const CABINET_UNIT_PRICES = {
@@ -47,6 +48,7 @@ const projectView = document.getElementById("projectView");
 const closeProjectView = document.getElementById("closeProjectView");
 const timelineSteps = document.getElementById("timelineSteps");
 const projectSubtitle = document.getElementById("projectSubtitle");
+const projectDateRange = document.getElementById("projectDateRange");
 const timelineWeeks = document.getElementById("timelineWeeks");
 const timelineWeekLabels = document.getElementById("timelineWeekLabels");
 
@@ -68,6 +70,11 @@ const ordersPageInfo = document.getElementById("ordersPageInfo");
 const machineUtilizationSection = document.getElementById("machineUtilizationSection");
 const machineUtilizationList = document.getElementById("machineUtilizationList");
 const WORKDAY_START_MINUTES = 8 * 60; // 08:00
+const WORKDAY_LUNCH_START_MINUTES = 12 * 60; // 12:00
+const WORKDAY_LUNCH_END_MINUTES = 13 * 60; // 13:00
+const WORKDAY_END_MINUTES = 17 * 60; // 17:00
+const WORKDAY_MORNING_MINUTES = WORKDAY_LUNCH_START_MINUTES - WORKDAY_START_MINUTES; // 4 hours
+const WORKDAY_AFTERNOON_MINUTES = WORKDAY_END_MINUTES - WORKDAY_LUNCH_END_MINUTES; // 4 hours
 const WORKDAY_MINUTES = 8 * 60; // 8-hour shift
 
 function parseDate(value) {
@@ -89,11 +96,28 @@ function formatClock(totalMinutes) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+function formatDateForDisplay(dateString) {
+  const parts = String(dateString || "").split("-");
+  if (parts.length === 3) {
+    const year = parts[0];
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (Number.isFinite(month) && Number.isFinite(day)) {
+      return `${month}/${day}/${year}`;
+    }
+  }
+  return dateString || "N/A";
+}
+
 function formatWorkMinute(workMinuteOffset) {
   const safeOffset = Math.max(0, Math.round(workMinuteOffset));
   const day = Math.floor(safeOffset / WORKDAY_MINUTES) + 1;
   const minuteInDay = safeOffset % WORKDAY_MINUTES;
-  const clock = formatClock(WORKDAY_START_MINUTES + minuteInDay);
+  const clockMinute =
+    minuteInDay < WORKDAY_MORNING_MINUTES
+      ? WORKDAY_START_MINUTES + minuteInDay
+      : WORKDAY_LUNCH_END_MINUTES + (minuteInDay - WORKDAY_MORNING_MINUTES);
+  const clock = formatClock(clockMinute);
   return { day, clock, label: `D${day} ${clock}` };
 }
 
@@ -679,6 +703,9 @@ function openProjectView(orderId) {
   activeProjectOrderId = orderId;
 
   projectSubtitle.textContent = `${order.customer_name} - ${order.cabinet_type} - Qty ${order.quantity}`;
+  if (projectDateRange) {
+    projectDateRange.textContent = `Project Dates: ${formatDateForDisplay(order.start_date)} - ${formatDateForDisplay(order.completion_date)}`;
+  }
 
   const startDate = new Date(order.start_date);
   const endDate = new Date(order.completion_date);
