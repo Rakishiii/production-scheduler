@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": 1,
+    "customer_name": "Channel",
+    "cabinet_type": "Hanging Cabinet",
+    "color": "AG-63",
+    "quantity": 5,
+    "start_date": "2026-02-18",
+    "completion_date": "2026-02-21",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "HIGH",
+    "machines": 6
+  },
+  {
+    "id": 2,
+    "customer_name": "raki",
+    "cabinet_type": "Hanging Cabinet",
+    "color": "AG-63",
+    "quantity": 12,
+    "start_date": "2026-02-09",
+    "completion_date": "2026-02-21",
+    "status": "In Progress",
+    "progress": 0,
+    "priority": "HIGH",
+    "machines": 6
+  }
+]

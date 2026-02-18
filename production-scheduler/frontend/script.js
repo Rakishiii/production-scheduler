@@ -1,7 +1,7 @@
 ﻿// Production Scheduler Frontend
 // API endpoint used by the frontend. Switch to localhost for local backend runs.
-const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
-//const BACKEND_URL = "http://127.0.0.1:5000";
+//const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+const BACKEND_URL = "http://127.0.0.1:5000";
 
 const CABINET_UNIT_PRICES = {
   "Tall Cabinet": 15000,
@@ -17,6 +17,8 @@ const DEADLINES_PAGE_SIZE = 4;
 const ORDERS_PAGE_SIZE = 10;
 let deadlinesPage = 1;
 let ordersTablePage = 1;
+const LOCAL_ORDERS_CACHE_KEY = "ps_orders_cache_v1";
+let isRestoringFromCache = false;
 const PROCESS_FLOW = [
   { name: "CNC Cutting", ratio: 15, color: "#7B542F", machine: "M01" },
   { name: "CNC Edging", ratio: 15, color: "#B6771D", machine: "M02" },
@@ -206,6 +208,63 @@ function formatCurrency(value) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function readCachedOrders() {
+  try {
+    const raw = localStorage.getItem(LOCAL_ORDERS_CACHE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to read local orders cache:", error);
+    return [];
+  }
+}
+
+function writeCachedOrders(orders) {
+  try {
+    localStorage.setItem(LOCAL_ORDERS_CACHE_KEY, JSON.stringify(orders || []));
+  } catch (error) {
+    console.warn("Failed to write local orders cache:", error);
+  }
+}
+
+async function restoreOrdersFromCache(cachedOrders) {
+  if (isRestoringFromCache || !cachedOrders.length) {
+    return false;
+  }
+
+  isRestoringFromCache = true;
+  try {
+    for (const cached of cachedOrders) {
+      const payload = {
+        customer_name: cached.customer_name,
+        cabinet_type: cached.cabinet_type,
+        color: cached.color,
+        quantity: Number(cached.quantity) || 1,
+        completion_date: cached.completion_date,
+      };
+
+      const response = await fetch(`${BACKEND_URL}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Restore failed with status ${response.status}`);
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to restore cached orders to backend:", error);
+    return false;
+  } finally {
+    isRestoringFromCache = false;
+  }
 }
 
 function getEstimatedOrderSales(order) {
@@ -612,6 +671,8 @@ async function loadOrders() {
     return;
   }
 
+  const cachedOrders = readCachedOrders();
+
   try {
     const demoDate = demoDateInput?.value;
     const query = demoDate ? `?date=${demoDate}` : "";
@@ -626,9 +687,35 @@ async function loadOrders() {
     const machineSchedule = data.machine_schedule || {};
     const assignments = data.assignments || [];
 
+    // Render snapshot immediately while backend warms up from a cold start.
+    if (!orders.length && cachedOrders.length && !demoDate && !isRestoringFromCache) {
+      const restored = await restoreOrdersFromCache(cachedOrders);
+      if (restored) {
+        const retry = await fetch(`${BACKEND_URL}/orders`);
+        if (retry.ok) {
+          const retryData = await retry.json();
+          const restoredOrders = Array.isArray(retryData) ? retryData : retryData.orders || [];
+          globalMachineSchedule = retryData.machine_schedule || {};
+          globalAssignments = retryData.assignments || [];
+          globalOrders = restoredOrders;
+          writeCachedOrders(restoredOrders);
+          renderDashboard(restoredOrders);
+          if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
+            const selectedOrder = restoredOrders.find((item) => item.id === activeProjectOrderId);
+            renderMachineUtilization(selectedOrder ? [selectedOrder] : restoredOrders);
+          }
+          renderOrdersTable(restoredOrders);
+          return;
+        }
+      }
+    }
+
     globalMachineSchedule = machineSchedule;
     globalAssignments = assignments;
     globalOrders = orders;
+    if (orders.length || !cachedOrders.length) {
+      writeCachedOrders(orders);
+    }
 
     renderDashboard(orders);
     if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
@@ -638,14 +725,18 @@ async function loadOrders() {
     renderOrdersTable(orders);
   } catch (error) {
     console.error("Failed to load orders:", error);
-    globalOrders = [];
-    renderDashboard([]);
+    const fallbackOrders = cachedOrders;
+    globalOrders = fallbackOrders;
+    renderDashboard(fallbackOrders);
     if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-      renderMachineUtilization([]);
+      const selectedOrder = fallbackOrders.find((item) => item.id === activeProjectOrderId);
+      renderMachineUtilization(selectedOrder ? [selectedOrder] : fallbackOrders);
     }
-    renderOrdersTable([]);
-    ordersTable.innerHTML =
-      '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
+    renderOrdersTable(fallbackOrders);
+    if (!fallbackOrders.length) {
+      ordersTable.innerHTML =
+        '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
+    }
   }
 }
 
@@ -676,10 +767,46 @@ if (orderForm) {
         orderForm.reset();
         loadOrders();
       } else {
-        alert("Failed to add order.");
+        const fallbackOrder = {
+          id: Date.now(),
+          customer_name: payload.customer_name,
+          cabinet_type: payload.cabinet_type,
+          color: payload.color,
+          quantity: payload.quantity,
+          start_date: payload.start_date,
+          completion_date: payload.completion_date,
+          status: "In Progress",
+          progress: 0,
+          priority: "MEDIUM",
+        };
+        const nextOrders = [...readCachedOrders(), fallbackOrder];
+        writeCachedOrders(nextOrders);
+        globalOrders = nextOrders;
+        renderDashboard(nextOrders);
+        renderOrdersTable(nextOrders);
+        alert("Backend is not ready yet. Order saved locally and will auto-restore.");
+        orderForm.reset();
       }
     } catch (error) {
-      alert("Error connecting to backend.");
+      const fallbackOrder = {
+        id: Date.now(),
+        customer_name: payload.customer_name,
+        cabinet_type: payload.cabinet_type,
+        color: payload.color,
+        quantity: payload.quantity,
+        start_date: payload.start_date,
+        completion_date: payload.completion_date,
+        status: "In Progress",
+        progress: 0,
+        priority: "MEDIUM",
+      };
+      const nextOrders = [...readCachedOrders(), fallbackOrder];
+      writeCachedOrders(nextOrders);
+      globalOrders = nextOrders;
+      renderDashboard(nextOrders);
+      renderOrdersTable(nextOrders);
+      alert("Backend is offline. Order saved locally and will auto-restore.");
+      orderForm.reset();
     }
   });
 }
@@ -688,9 +815,18 @@ async function deleteOrder(id) {
   if (confirm("Delete this order?")) {
     try {
       await fetch(`${BACKEND_URL}/orders/${id}`, { method: "DELETE" });
+      const cached = readCachedOrders();
+      if (cached.length) {
+        writeCachedOrders(cached.filter((o) => Number(o.id) !== Number(id)));
+      }
       loadOrders();
     } catch (error) {
-      alert("Failed to delete order.");
+      const nextOrders = readCachedOrders().filter((o) => Number(o.id) !== Number(id));
+      writeCachedOrders(nextOrders);
+      globalOrders = nextOrders;
+      renderDashboard(nextOrders);
+      renderOrdersTable(nextOrders);
+      alert("Backend is offline. Order removed from local backup.");
     }
   }
 }
