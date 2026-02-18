@@ -1,13 +1,7 @@
 ﻿// Production Scheduler Frontend
 // API endpoint used by the frontend. Switch to localhost for local backend runs.
-//const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
-const BACKEND_URL = "http://127.0.0.1:5000";
-
-const CABINET_UNIT_PRICES = {
-  "Tall Cabinet": 15000,
-  "Hanging Cabinet": 10000,
-  Shelves: 7000,
-};
+const BACKEND_URL = "https://production-scheduler-tvi9.onrender.com";
+//const BACKEND_URL = "http://127.0.0.1:5000";
 
 let globalMachineSchedule = {};
 let globalAssignments = [];
@@ -201,15 +195,6 @@ function getEffectivePriority(order) {
   return "LOW";
 }
 
-function formatCurrency(value) {
-  const amount = Number(value) || 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function readCachedOrders() {
   try {
     const raw = localStorage.getItem(LOCAL_ORDERS_CACHE_KEY);
@@ -265,21 +250,6 @@ async function restoreOrdersFromCache(cachedOrders) {
   } finally {
     isRestoringFromCache = false;
   }
-}
-
-function getEstimatedOrderSales(order) {
-  if (Number.isFinite(order.total_amount)) {
-    return Number(order.total_amount);
-  }
-  if (Number.isFinite(order.total_price)) {
-    return Number(order.total_price);
-  }
-  if (Number.isFinite(order.amount)) {
-    return Number(order.amount);
-  }
-  const quantity = Number(order.quantity) || 0;
-  const unitPrice = CABINET_UNIT_PRICES[order.cabinet_type] || 0;
-  return quantity * unitPrice;
 }
 
 function renderBreakdown(container, rows) {
