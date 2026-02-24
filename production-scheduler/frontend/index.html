@@ -353,13 +353,18 @@
       <header class="shadow-sm sticky top-0 z-40" style="background: linear-gradient(135deg, #7B542F 0%, #B6771D 100%); border-bottom: 2px solid #FF9D00;">
         <div class="max-w-7xl mx-auto px-6 py-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
+            <button
+              id="brandHome"
+              type="button"
+              class="flex items-center gap-4 cursor-pointer"
+              style="background: transparent; border: 0; padding: 0; text-align: left;"
+            >
               <img src="image-removebg-preview (1).png" alt="BA Cabinet Concepts Logo" class="h-16 w-auto" />
               <div>
                 <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
                 <p class="text-sm text-amber-100">Production Scheduling &amp; Resource Optimization System</p>
               </div>
-            </div>
+            </button>
             <div class="flex gap-5 no-print overflow-x-auto" role="tablist" aria-label="Primary navigation">
               <button
                 id="navDashboard"
@@ -897,6 +902,7 @@
       const navOrders = document.getElementById("navOrders");
       const navCabinet = document.getElementById("navCabinet");
       const navDecision = document.getElementById("navDecision");
+      const brandHome = document.getElementById("brandHome");
       const dashboardPage = document.getElementById("dashboardPage");
       const ordersPage = document.getElementById("ordersPage");
       const cabinetPage = document.getElementById("cabinetPage");
@@ -928,6 +934,12 @@
       navOrders.addEventListener("click", () => setActivePage("orders"));
       navCabinet.addEventListener("click", () => setActivePage("cabinet"));
       navDecision.addEventListener("click", () => setActivePage("decision"));
+      if (brandHome) {
+        brandHome.addEventListener("click", () => {
+          setActivePage("dashboard");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
       setActivePage("dashboard");
     </script>
     <script src="script.js"></script>

@@ -936,7 +936,10 @@ function openProjectView(orderId) {
   const endDate = new Date(order.completion_date);
   const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
 
-  const dayLabels = Array.from({ length: totalDays }, (_, idx) => `<div style="text-align: center;">Day ${idx + 1}</div>`).join("");
+  const dayLabels = Array.from(
+    { length: totalDays },
+    (_, idx) => `<div style="text-align: center; white-space: nowrap;">D${idx + 1}</div>`
+  ).join("");
   timelineWeekLabels.innerHTML = `<div style="display: grid; grid-template-columns: repeat(${totalDays}, 1fr); width: 100%; gap: 0;">${dayLabels}</div>`;
 
   const totalWorkMinutes = totalDays * WORKDAY_MINUTES;
