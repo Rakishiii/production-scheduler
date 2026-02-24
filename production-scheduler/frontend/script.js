@@ -13,6 +13,7 @@ let deadlinesPage = 1;
 let ordersTablePage = 1;
 const LOCAL_ORDERS_CACHE_KEY = "ps_orders_cache_v1";
 let isRestoringFromCache = false;
+let isReconcilingFromCache = false;
 const PROCESS_FLOW = [
   { name: "CNC Cutting", ratio: 15, color: "#7B542F", machine: "M01" },
   { name: "CNC Edging", ratio: 15, color: "#B6771D", machine: "M02" },
@@ -217,6 +218,54 @@ function writeCachedOrders(orders) {
   }
 }
 
+function getOrderSignature(order) {
+  return [
+    String(order?.customer_name || "").trim().toLowerCase(),
+    String(order?.cabinet_type || "").trim().toLowerCase(),
+    String(order?.color || "").trim().toLowerCase(),
+    String(Number(order?.quantity) || 0),
+    String(order?.completion_date || ""),
+  ].join("|");
+}
+
+function getReconcileActions(backendOrders, cachedOrders) {
+  const cacheBuckets = new Map();
+  cachedOrders.forEach((order) => {
+    const signature = getOrderSignature(order);
+    if (!cacheBuckets.has(signature)) {
+      cacheBuckets.set(signature, []);
+    }
+    cacheBuckets.get(signature).push(order);
+  });
+
+  const deleteIds = [];
+  backendOrders.forEach((order) => {
+    const signature = getOrderSignature(order);
+    const bucket = cacheBuckets.get(signature);
+    if (bucket && bucket.length) {
+      bucket.shift();
+      return;
+    }
+    deleteIds.push(order.id);
+  });
+
+  const createOrders = [];
+  cacheBuckets.forEach((bucket) => {
+    bucket.forEach((order) => createOrders.push(order));
+  });
+
+  return { deleteIds, createOrders };
+}
+
+function mergeOrderIntoCache(order) {
+  const cached = readCachedOrders();
+  const signature = getOrderSignature(order);
+  const exists = cached.some((item) => getOrderSignature(item) === signature);
+  if (!exists) {
+    writeCachedOrders([...cached, order]);
+  }
+}
+
 async function restoreOrdersFromCache(cachedOrders) {
   if (isRestoringFromCache || !cachedOrders.length) {
     return false;
@@ -249,6 +298,46 @@ async function restoreOrdersFromCache(cachedOrders) {
     return false;
   } finally {
     isRestoringFromCache = false;
+  }
+}
+
+async function reconcileBackendWithCache(backendOrders, cachedOrders) {
+  if (isReconcilingFromCache || !cachedOrders.length) {
+    return false;
+  }
+
+  const { deleteIds, createOrders } = getReconcileActions(backendOrders, cachedOrders);
+  if (!deleteIds.length && !createOrders.length) {
+    return false;
+  }
+
+  isReconcilingFromCache = true;
+  try {
+    for (const id of deleteIds) {
+      await fetch(`${BACKEND_URL}/orders/${id}`, { method: "DELETE" });
+    }
+
+    for (const cached of createOrders) {
+      const payload = {
+        customer_name: cached.customer_name,
+        cabinet_type: cached.cabinet_type,
+        color: cached.color,
+        quantity: Number(cached.quantity) || 1,
+        completion_date: cached.completion_date,
+      };
+      await fetch(`${BACKEND_URL}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to reconcile backend with local cache:", error);
+    return false;
+  } finally {
+    isReconcilingFromCache = false;
   }
 }
 
@@ -680,10 +769,32 @@ async function loadOrders() {
       }
     }
 
+    if (cachedOrders.length && !demoDate && !isReconcilingFromCache) {
+      const changed = await reconcileBackendWithCache(orders, cachedOrders);
+      if (changed) {
+        const retry = await fetch(`${BACKEND_URL}/orders`);
+        if (retry.ok) {
+          const retryData = await retry.json();
+          const reconciledOrders = Array.isArray(retryData) ? retryData : retryData.orders || [];
+          globalMachineSchedule = retryData.machine_schedule || {};
+          globalAssignments = retryData.assignments || [];
+          globalOrders = reconciledOrders;
+          writeCachedOrders(reconciledOrders);
+          renderDashboard(reconciledOrders);
+          if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
+            const selectedOrder = reconciledOrders.find((item) => item.id === activeProjectOrderId);
+            renderMachineUtilization(selectedOrder ? [selectedOrder] : reconciledOrders);
+          }
+          renderOrdersTable(reconciledOrders);
+          return;
+        }
+      }
+    }
+
     globalMachineSchedule = machineSchedule;
     globalAssignments = assignments;
     globalOrders = orders;
-    if (orders.length || !cachedOrders.length) {
+    if (demoDate || cachedOrders.length) {
       writeCachedOrders(orders);
     }
 
@@ -734,6 +845,10 @@ if (orderForm) {
       });
 
       if (response.ok) {
+        const createdOrder = await response.json().catch(() => null);
+        if (createdOrder && !demoDate) {
+          mergeOrderIntoCache(createdOrder);
+        }
         orderForm.reset();
         loadOrders();
       } else {
