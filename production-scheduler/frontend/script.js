@@ -938,7 +938,8 @@ function openProjectView(orderId) {
 
   const dayLabels = Array.from(
     { length: totalDays },
-    (_, idx) => `<div style="text-align: center; white-space: nowrap;">D${idx + 1}</div>`
+    (_, idx) =>
+      `<div style="text-align: center; white-space: nowrap; font-size: 11px; line-height: 1;">Day${idx + 1}</div>`
   ).join("");
   timelineWeekLabels.innerHTML = `<div style="display: grid; grid-template-columns: repeat(${totalDays}, 1fr); width: 100%; gap: 0;">${dayLabels}</div>`;
 
