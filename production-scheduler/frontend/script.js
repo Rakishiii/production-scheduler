@@ -939,7 +939,10 @@ function openProjectView(orderId) {
   const dayLabels = Array.from(
     { length: totalDays },
     (_, idx) =>
-      `<div style="text-align: center; white-space: nowrap; font-size: 11px; line-height: 1;">Day${idx + 1}</div>`
+      `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; white-space: nowrap; line-height: 1;">
+        <span style="font-size: 10px;">Day</span>
+        <span style="font-size: 10px;">${idx + 1}</span>
+      </div>`
   ).join("");
   timelineWeekLabels.innerHTML = `<div style="display: grid; grid-template-columns: repeat(${totalDays}, 1fr); width: 100%; gap: 0;">${dayLabels}</div>`;
 
