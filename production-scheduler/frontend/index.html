@@ -362,7 +362,7 @@
               <img src="image-removebg-preview (1).png" alt="BA Cabinet Concepts Logo" class="h-16 w-auto" />
               <div>
                 <h1 class="text-2xl font-bold text-white">BACabinetConcepts</h1>
-                <p class="text-sm text-amber-100">Production Scheduling &amp; Resource Optimization System</p>
+                <p class="text-sm text-amber-100">Production Scheduling &amp; Resource Allocation System</p>
               </div>
             </button>
             <div class="flex gap-5 no-print overflow-x-auto" role="tablist" aria-label="Primary navigation">
@@ -383,6 +383,14 @@
                 Orders
               </button>
               <button
+                id="navAttendance"
+                type="button"
+                class="nav-tab"
+                aria-selected="false"
+              >
+                Attendance
+              </button>
+              <button
                 id="navCabinet"
                 type="button"
                 class="nav-tab"
@@ -396,7 +404,7 @@
                 class="nav-tab"
                 aria-selected="false"
               >
-                Optimization Model
+                Optimization Setup
               </button>
             </div>
           </div>
@@ -671,6 +679,76 @@
           </section>
         </div>
 
+        <div id="attendancePage" class="hidden">
+          <div class="bg-white rounded-2xl p-8 shadow-lg mb-8 no-print" style="border: 2px solid #FFCF71;">
+            <div class="mb-6">
+              <h2 class="text-xl font-semibold" style="color: #7B542F;">Attendance Management</h2>
+              <p class="text-sm mt-1" style="color: #B6771D;">Mark absent resources so they are not assigned on that date.</p>
+            </div>
+
+            <form id="attendanceForm" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <input
+                type="date"
+                id="attendanceDate"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              />
+              <select
+                id="attendanceResource"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+                required
+              >
+                <option value="" disabled selected>Select Resource</option>
+              </select>
+              <input
+                type="text"
+                id="attendanceReason"
+                placeholder="Reason (optional)"
+                class="rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 md:col-span-2"
+                style="border-color: #FFCF71; --tw-ring-color: #FF9D00;"
+              />
+              <button
+                type="submit"
+                class="rounded-lg text-white px-6 py-3 font-semibold transition shadow-lg whitespace-nowrap"
+                style="background: #FF9D00;"
+                onmouseover="this.style.background='#B6771D'"
+                onmouseout="this.style.background='#FF9D00'"
+              >
+                Mark Absent
+              </button>
+            </form>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-lg overflow-hidden" style="border: 2px solid #FFCF71;">
+            <div class="p-8" style="border-bottom: 2px solid #FFCF71;">
+              <h3 class="text-lg font-semibold" style="color: #7B542F;">Absence Records</h3>
+              <p class="text-sm mt-1" style="color: #B6771D;">Resources unavailable for selected dates.</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Date</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Resource</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Role</th>
+                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Reason</th>
+                    <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTable" class="divide-y divide-slate-200">
+                  <tr>
+                    <td colspan="5" class="p-8 text-center" style="color: #B6771D;">
+                      Loading attendance...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <div id="cabinetPage" class="hidden">
           <div class="rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71; background: #F6F6F6;">
             <div class="mb-7">
@@ -788,73 +866,104 @@
         </div>
 
         <div id="decisionPage" class="hidden">
-          <div class="bg-white rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71;">
-            <div class="mb-6">
-              <h2 class="text-xl font-semibold" style="color: #7B542F;">Optimization Model</h2>
-              <p class="text-sm mt-1" style="color: #B6771D;">Model variables, objective, and constraints</p>
+          <div class="rounded-2xl p-8 shadow-lg" style="border: 2px solid #FFCF71; background: #F6F6F6;">
+            <div class="text-center pb-5 mb-5" style="border-bottom: 1px solid #E7C777;">
+              <h2 class="text-4xl font-semibold" style="color: #7B542F;">Optimization Setup</h2>
             </div>
 
-            <div class="space-y-6 text-sm" style="color: #3f2a1c;">
-              <div>
-                <h3 class="text-base font-semibold" style="color: #7B542F;">3.3 Indices</h3>
-                <p class="mt-2">Let: i = 1,2,3,...,N (customer orders/jobs)</p>
-                <p>Each order already includes: Cabinet type, Dimensions, Quantity, Custom features</p>
-                <p>m = 1,2,3,4 (machines/workstations)</p>
-                <div class="mt-2">
-                  <p class="font-semibold" style="color: #7B542F;">Machine / Workstation</p>
-                  <p>1 CNC Cutting (man-operated)</p>
-                  <p>2 CNC Edging (man-operated)</p>
-                  <p>3 CNC Routing (man-operated)</p>
-                  <p>4 Assembly-QA-Packing (manual station)</p>
-                </div>
-              </div>
+            <div class="rounded-xl p-5 mb-6" style="border: 1px solid #E7C777; background: #FFFBF3;">
+              <p class="text-base leading-8" style="color: #3f2a1c;">
+                This module defines the model objective, declared parameters, workstation configuration,
+                and operational constraints used by the Python-based optimization system for production
+                scheduling and resource allocation.
+              </p>
+            </div>
 
-              <div>
-                <h3 class="text-base font-semibold" style="color: #7B542F;">3.4 Optimization Variables and Parameters</h3>
-                <p class="mt-2">Optimization Variables: S_i = Start time of order i</p>
-                <p>C_i = Completion time of order i</p>
-                <p>C_max = Makespan (maximum completion time)</p>
-                <p class="mt-2">Parameters: p_{im} = Processing time of order i on machine m</p>
-                <p>H_m = Available working time of machine m</p>
+            <div class="spec-sheet-card mb-6">
+              <div class="spec-sheet-title">Optimization Objective</div>
+              <div class="rounded-lg p-4 mb-4" style="border: 1px solid #E7C777; background: #ffffff;">
+                <p class="text-3xl font-semibold" style="color: #3f2a1c;">
+                  Objective Function: Minimize Total Production Makespan (<em>C<sub>max</sub></em>)
+                </p>
+                <p class="text-base mt-4 leading-7" style="color: #64452D;">
+                  The system generates the shortest feasible production schedule while satisfying machine capacity,
+                  labor availability, and production sequence constraints.
+                </p>
+                <p class="text-base mt-2 leading-7" style="color: #64452D;">
+                  Makespan is calculated from the start of first job to the completion of the final job.
+                </p>
               </div>
+            </div>
 
-              <div>
-                <h3 class="text-base font-semibold" style="color: #7B542F;">3.5 Objective Function</h3>
-                <p class="mt-2">Minimize C_max</p>
-                <p>C_max >= C_i for all i in {1,...,N}</p>
-                <p class="mt-2">The model minimizes the maximum completion time among all customer orders to achieve the shortest overall production schedule.</p>
+            <div class="spec-sheet-card mb-6">
+              <div class="spec-sheet-title">Processing Time Parameters (Standard Time with 30% Allowance)</div>
+              <p class="text-sm mb-3" style="color: #64452D;">Derived from the Time and Motion Study (Appendix C).</p>
+              <table class="spec-table">
+                <thead>
+                  <tr>
+                    <th>Product / Process</th>
+                    <th>Standard Time (Hours)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>Tall Cabinet</td><td>6.7 hrs</td></tr>
+                  <tr><td>CNC Edging</td><td>8.46 hrs</td></tr>
+                  <tr><td>CNC Routing</td><td>5.84 hrs</td></tr>
+                  <tr><td>Assembly-QA-Packing</td><td>Labor-Based</td></tr>
+                </tbody>
+              </table>
+              <p class="spec-note">These values serve as the primary processing time parameters (p<sub>im</sub>) in the optimization model.</p>
+            </div>
+
+            <div class="spec-sheet-card mb-6">
+              <div class="spec-sheet-title">Workstation Configuration</div>
+              <table class="spec-table">
+                <thead>
+                  <tr>
+                    <th>Workstation</th>
+                    <th>Type</th>
+                    <th>Capacity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>CNC Cutting</td><td>Machine</td><td>1</td></tr>
+                  <tr><td>CNC Edging</td><td>Machine</td><td>1</td></tr>
+                  <tr><td>CNC Routing</td><td>Machine</td><td>1</td></tr>
+                  <tr><td>Assembly-QA-Packing</td><td>Manual</td><td>Labor-Based</td></tr>
+                </tbody>
+              </table>
+              <p class="spec-note">Manual operations are limited by available manpower per shift.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="spec-sheet-card">
+                <div class="spec-sheet-title">Scheduling Rules Applied</div>
+                <ul class="list-disc pl-6 text-base space-y-2" style="color: #3f2a1c;">
+                  <li>Fixed production sequence</li>
+                  <li>Cutting -> Edging -> Routing -> Assembly</li>
+                  <li>No overlapping jobs per machine</li>
+                  <li>Total assigned processing time per workstation</li>
+                </ul>
               </div>
+              <div class="spec-sheet-card">
+                <div class="spec-sheet-title">Scheduling Horizon</div>
+                <ul class="list-disc pl-6 text-base space-y-2" style="color: #3f2a1c;">
+                  <li>Working Days per Week: 6</li>
+                  <li>Hours per Day: 8</li>
+                  <li>Planned Downtime: 1 hour per day</li>
+                  <li>Effective Machine Time: 7 hours/day</li>
+                </ul>
+              </div>
+            </div>
 
-              <div>
-                <h3 class="text-base font-semibold" style="color: #7B542F;">3.6 Model Constraints</h3>
-                <div class="mt-2">
-                  <p class="font-semibold" style="color: #7B542F;">3.6.1 Machine Capacity Constraints</p>
-                  <p>sum(i=1..N) p_{i1} <= H_1</p>
-                  <p>sum(i=1..N) p_{i2} <= H_2</p>
-                  <p>sum(i=1..N) p_{i3} <= H_3</p>
-                  <p>sum(i=1..N) p_{i4} <= H_4</p>
-                </div>
-                <div class="mt-4">
-                  <p class="font-semibold" style="color: #7B542F;">3.6.2 Operation Sequence Constraints</p>
-                  <p>CNC Cutting -> Edging -> Routing -> Assembly -> Quality Assurance -> Packing</p>
-                  <p>S_{i2} >= S_{i1} + p_{i1}</p>
-                  <p>S_{i3} >= S_{i2} + p_{i2}</p>
-                  <p>S_{i4} >= S_{i3} + p_{i3}</p>
-                  <p>S_{i5} >= S_{i4} + p_{i4}</p>
-                  <p>S_{i6} >= S_{i5} + p_{i5}</p>
-                </div>
-                <div class="mt-4">
-                  <p class="font-semibold" style="color: #7B542F;">3.6.3 Completion Time Definition</p>
-                  <p>C_i = S_{i6} + p_{i6}</p>
-                </div>
-                <div class="mt-4">
-                  <p class="font-semibold" style="color: #7B542F;">3.6.4 Makespan Constraint</p>
-                  <p>C_max >= C_i for all i in {1,...,N}</p>
-                </div>
-                <div class="mt-4">
-                  <p class="font-semibold" style="color: #7B542F;">3.6.5 Non-Negativity Constraints</p>
-                  <p>S_i >= 0, C_i >= 0, p_{im} >= 0</p>
-                </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 mt-6 text-sm" style="border-top: 1px solid #E7C777;">
+              <div class="p-3" style="border-right: 1px solid #E7C777; color: #64452D;">
+                <span class="font-semibold" style="color: #7B542F;">Optimization Engine:</span>
+                Constraint-Based Scheduling Solver
+              </div>
+              <div class="p-3" style="color: #64452D;">
+                <span class="font-semibold" style="color: #7B542F;">Model Type:</span>
+                Deterministic Job-Shop Scheduling
               </div>
             </div>
           </div>
@@ -900,38 +1009,45 @@
 
       const navDashboard = document.getElementById("navDashboard");
       const navOrders = document.getElementById("navOrders");
+      const navAttendance = document.getElementById("navAttendance");
       const navCabinet = document.getElementById("navCabinet");
       const navDecision = document.getElementById("navDecision");
       const brandHome = document.getElementById("brandHome");
       const dashboardPage = document.getElementById("dashboardPage");
       const ordersPage = document.getElementById("ordersPage");
+      const attendancePage = document.getElementById("attendancePage");
       const cabinetPage = document.getElementById("cabinetPage");
       const decisionPage = document.getElementById("decisionPage");
 
       const setActivePage = (active) => {
         const isDashboard = active === "dashboard";
         const isOrders = active === "orders";
+        const isAttendance = active === "attendance";
         const isCabinet = active === "cabinet";
         const isDecision = active === "decision";
 
         dashboardPage.classList.toggle("hidden", !isDashboard);
         ordersPage.classList.toggle("hidden", !isOrders);
+        attendancePage.classList.toggle("hidden", !isAttendance);
         cabinetPage.classList.toggle("hidden", !isCabinet);
         decisionPage.classList.toggle("hidden", !isDecision);
 
         navDashboard.classList.toggle("active", isDashboard);
         navOrders.classList.toggle("active", isOrders);
+        navAttendance.classList.toggle("active", isAttendance);
         navCabinet.classList.toggle("active", isCabinet);
         navDecision.classList.toggle("active", isDecision);
 
         navDashboard.setAttribute("aria-selected", isDashboard);
         navOrders.setAttribute("aria-selected", isOrders);
+        navAttendance.setAttribute("aria-selected", isAttendance);
         navCabinet.setAttribute("aria-selected", isCabinet);
         navDecision.setAttribute("aria-selected", isDecision);
       };
 
       navDashboard.addEventListener("click", () => setActivePage("dashboard"));
       navOrders.addEventListener("click", () => setActivePage("orders"));
+      navAttendance.addEventListener("click", () => setActivePage("attendance"));
       navCabinet.addEventListener("click", () => setActivePage("cabinet"));
       navDecision.addEventListener("click", () => setActivePage("decision"));
       if (brandHome) {

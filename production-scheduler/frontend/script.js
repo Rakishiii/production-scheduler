@@ -11,13 +11,15 @@ const DEADLINES_PAGE_SIZE = 4;
 const ORDERS_PAGE_SIZE = 10;
 let deadlinesPage = 1;
 let ordersTablePage = 1;
+let globalAttendance = [];
+let attendanceResources = [];
 const LOCAL_ORDERS_CACHE_KEY = "ps_orders_cache_v1";
 let isRestoringFromCache = false;
 let isReconcilingFromCache = false;
 const PROCESS_FLOW = [
-  { name: "CNC Cutting", ratio: 15, color: "#7B542F", machine: "M01" },
-  { name: "CNC Edging", ratio: 15, color: "#B6771D", machine: "M02" },
-  { name: "CNC Routing", ratio: 15, color: "#FF9D00", machine: "M03" },
+  { name: "CNC Cutting", ratio: 15, color: "#7B542F", machine: "MO1" },
+  { name: "CNC Edging", ratio: 15, color: "#B6771D", machine: "MO2" },
+  { name: "CNC Routing", ratio: 15, color: "#FF9D00", machine: "MO3" },
   { name: "Assembly", ratio: 40, color: "#FFCF71", machine: "N/A" },
   { name: "Quality Assurance", ratio: 5, color: "#B6771D", machine: "N/A" },
   { name: "Packing", ratio: 10, color: "#7B542F", machine: "N/A" },
@@ -64,15 +66,20 @@ const deadlinesPageInfo = document.getElementById("deadlinesPageInfo");
 const ordersPrevBtn = document.getElementById("ordersPrevBtn");
 const ordersNextBtn = document.getElementById("ordersNextBtn");
 const ordersPageInfo = document.getElementById("ordersPageInfo");
+const attendanceForm = document.getElementById("attendanceForm");
+const attendanceDateInput = document.getElementById("attendanceDate");
+const attendanceResourceSelect = document.getElementById("attendanceResource");
+const attendanceReasonInput = document.getElementById("attendanceReason");
+const attendanceTable = document.getElementById("attendanceTable");
 const machineUtilizationSection = document.getElementById("machineUtilizationSection");
 const machineUtilizationList = document.getElementById("machineUtilizationList");
 const WORKDAY_START_MINUTES = 8 * 60; // 08:00
 const WORKDAY_LUNCH_START_MINUTES = 12 * 60; // 12:00
 const WORKDAY_LUNCH_END_MINUTES = 13 * 60; // 13:00
-const WORKDAY_END_MINUTES = 17 * 60; // 17:00
+const WORKDAY_END_MINUTES = 16 * 60; // 16:00
 const WORKDAY_MORNING_MINUTES = WORKDAY_LUNCH_START_MINUTES - WORKDAY_START_MINUTES; // 4 hours
-const WORKDAY_AFTERNOON_MINUTES = WORKDAY_END_MINUTES - WORKDAY_LUNCH_END_MINUTES; // 4 hours
-const WORKDAY_MINUTES = 8 * 60; // 8-hour shift
+const WORKDAY_AFTERNOON_MINUTES = WORKDAY_END_MINUTES - WORKDAY_LUNCH_END_MINUTES; // 3 hours
+const WORKDAY_MINUTES = WORKDAY_MORNING_MINUTES + WORKDAY_AFTERNOON_MINUTES; // 7 productive hours
 
 function parseDate(value) {
   if (!value) {
@@ -120,6 +127,82 @@ function formatWorkMinute(workMinuteOffset) {
 
 function getProcessRange(processName) {
   return PROCESS_STAGE_MAP[processName] || null;
+}
+
+function getCompletedProcessList(order) {
+  if (!Array.isArray(order?.completed_processes)) {
+    return [];
+  }
+
+  const allowed = new Set(PROCESS_FLOW.map((process) => process.name));
+  return order.completed_processes.filter((name, index, array) => (
+    allowed.has(name) && array.indexOf(name) === index
+  ));
+}
+
+function getNextPendingProcess(order) {
+  const completedSet = new Set(getCompletedProcessList(order));
+  const next = PROCESS_FLOW.find((process) => !completedSet.has(process.name));
+  return next ? next.name : null;
+}
+
+function getCompletedStageProgress(order) {
+  const completedSet = new Set(getCompletedProcessList(order));
+  let progress = 0;
+  for (const process of PROCESS_FLOW) {
+    if (completedSet.has(process.name)) {
+      progress += process.ratio;
+    } else {
+      break;
+    }
+  }
+  return progress;
+}
+
+function getProgressSnapshot(order) {
+  if (isStatusCompleted(order)) {
+    return {
+      normalizedProgress: 100,
+      activeProcessPercent: 100,
+      nextProcessName: null,
+      completedProgress: 100,
+    };
+  }
+
+  const completedProgress = getCompletedStageProgress(order);
+  const nextProcessName = getNextPendingProcess(order);
+  const nextProcess = PROCESS_FLOW.find((process) => process.name === nextProcessName) || null;
+  if (!nextProcess) {
+    return {
+      normalizedProgress: 100,
+      activeProcessPercent: 100,
+      nextProcessName: null,
+      completedProgress: 100,
+    };
+  }
+
+  const dateProgress = calculateDateProgress(order);
+  const stageEnd = completedProgress + nextProcess.ratio;
+  const stageCap = stageEnd >= 100 ? 99 : stageEnd;
+  const projected = dateProgress === null ? completedProgress : dateProgress;
+  const normalizedProgress = Math.max(completedProgress, Math.min(stageCap, projected));
+
+  const ratio = nextProcess.ratio > 0 ? nextProcess.ratio : 1;
+  const activeProcessPercent = Math.max(
+    0,
+    Math.min(99, ((normalizedProgress - completedProgress) / ratio) * 100)
+  );
+
+  return {
+    normalizedProgress,
+    activeProcessPercent,
+    nextProcessName,
+    completedProgress,
+  };
+}
+
+function getActiveProcessProgress(order) {
+  return Math.round(getProgressSnapshot(order).activeProcessPercent);
 }
 
 function getProcessProgressPercent(orderProgress, processName) {
@@ -176,13 +259,7 @@ function isCompleted(order) {
 }
 
 function getNormalizedProgress(order) {
-  const rawProgress = Number(order?.progress);
-  const backendProgress = Number.isFinite(rawProgress)
-    ? Math.max(0, Math.min(100, rawProgress))
-    : 0;
-  const dateProgress = calculateDateProgress(order);
-  const normalized = dateProgress === null ? backendProgress : dateProgress;
-  return isStatusCompleted(order) || normalized >= 100 ? 100 : normalized;
+  return getProgressSnapshot(order).normalizedProgress;
 }
 
 function getEffectivePriority(order) {
@@ -227,6 +304,188 @@ function getOrderSignature(order) {
     String(order?.completion_date || ""),
   ].join("|");
 }
+
+function findOrderById(orders, targetId) {
+  if (!Array.isArray(orders)) {
+    return null;
+  }
+  return orders.find((item) => Number(item?.id) === Number(targetId)) || null;
+}
+
+function formatAssignedResource(assignment) {
+  const normalizeResourceCode = (value) => {
+    const code = String(value || "").trim().toUpperCase();
+    const legacyMachine = code.match(/^M0?([1-9]\d*)$/);
+    if (legacyMachine) {
+      return `MO${Number(legacyMachine[1])}`;
+    }
+
+    const legacyWorker = code.match(/^W0?(\d+)$/);
+    if (legacyWorker) {
+      const workerNumber = Number(legacyWorker[1]);
+      if (workerNumber >= 1 && workerNumber <= 3) {
+        return `MO${workerNumber}`;
+      }
+      if (workerNumber >= 4 && workerNumber <= 9) {
+        return `C${workerNumber - 3}`;
+      }
+      if (workerNumber >= 10 && workerNumber <= 17) {
+        return `NSH${workerNumber - 9}`;
+      }
+    }
+    return code;
+  };
+
+  const worker = normalizeResourceCode(assignment?.worker || "");
+  const machine = normalizeResourceCode(assignment?.machine || "");
+
+  if (machine && machine !== "N/A") {
+    if (worker && worker !== "Unassigned" && worker !== machine) {
+      return `${worker} (${machine})`;
+    }
+    return machine;
+  }
+
+  if (worker && worker !== "Unassigned") {
+    return worker;
+  }
+  return "Manual Team";
+}
+
+function refreshActiveProjectView() {
+  if (!projectView || projectView.classList.contains("hidden")) {
+    return;
+  }
+  if (activeProjectOrderId === null || activeProjectOrderId === undefined) {
+    return;
+  }
+  const selectedOrder = findOrderById(globalOrders, activeProjectOrderId);
+  if (!selectedOrder) {
+    return;
+  }
+  openProjectView(activeProjectOrderId, { scroll: false });
+}
+
+function formatAttendanceDate(dateString) {
+  const value = String(dateString || "").trim();
+  if (!value) {
+    return "N/A";
+  }
+  return formatDateForDisplay(value);
+}
+
+function populateAttendanceResources(resources) {
+  if (!attendanceResourceSelect) {
+    return;
+  }
+
+  const options = Array.isArray(resources) ? resources : [];
+  attendanceResourceSelect.innerHTML = `
+    <option value="" disabled selected>Select Resource</option>
+    ${options.map((resource) => {
+      const id = String(resource.id || "").toUpperCase();
+      const role = String(resource.role || "").trim();
+      return `<option value="${id}">${id} - ${role}</option>`;
+    }).join("")}
+  `;
+}
+
+function renderAttendanceTable(records) {
+  if (!attendanceTable) {
+    return;
+  }
+
+  if (!Array.isArray(records) || !records.length) {
+    attendanceTable.innerHTML = `
+      <tr>
+        <td colspan="5" class="p-6 text-center" style="color: #B6771D;">
+          No absences recorded.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  attendanceTable.innerHTML = records.map((record) => {
+    const id = Number(record.id) || 0;
+    const date = formatAttendanceDate(record.date);
+    const resource = String(record.resource || "").toUpperCase();
+    const role = String(record.role || "").trim() || "N/A";
+    const reason = String(record.reason || "").trim() || "-";
+    return `
+      <tr class="border-b border-amber-100">
+        <td class="p-4" style="color: #7B542F;">${date}</td>
+        <td class="p-4 font-semibold" style="color: #3f2a1c;">${resource}</td>
+        <td class="p-4" style="color: #7B542F;">${role}</td>
+        <td class="p-4" style="color: #7B542F;">${reason}</td>
+        <td class="p-4 no-print">
+          <button
+            type="button"
+            onclick="deleteAttendanceRecord(${id})"
+            class="px-3 py-1 rounded-lg text-white text-xs font-semibold"
+            style="background: #7B542F;"
+            onmouseover="this.style.background='#B6771D'"
+            onmouseout="this.style.background='#7B542F'"
+          >
+            Remove
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function loadAttendance() {
+  if (!attendanceTable) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/attendance`);
+    if (!response.ok) {
+      throw new Error(`Request failed with ${response.status}`);
+    }
+
+    const data = await response.json();
+    const records = Array.isArray(data?.attendance) ? data.attendance : [];
+    const resources = Array.isArray(data?.resources) ? data.resources : [];
+    globalAttendance = records;
+    attendanceResources = resources;
+    populateAttendanceResources(resources);
+    renderAttendanceTable(records);
+  } catch (error) {
+    console.error("Failed to load attendance:", error);
+    renderAttendanceTable(globalAttendance);
+    if (!globalAttendance.length) {
+      attendanceTable.innerHTML = `
+        <tr>
+          <td colspan="5" class="p-6 text-center" style="color: #B6771D;">
+            Failed to load attendance. Check backend connection.
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+async function deleteAttendanceRecord(recordId) {
+  if (!confirm("Remove this absence record?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/attendance/${recordId}`, { method: "DELETE" });
+    if (!response.ok) {
+      throw new Error(`Request failed with ${response.status}`);
+    }
+    await loadAttendance();
+    await loadOrders();
+  } catch (error) {
+    alert("Failed to remove attendance record.");
+  }
+}
+
+window.deleteAttendanceRecord = deleteAttendanceRecord;
 
 function getReconcileActions(backendOrders, cachedOrders) {
   const cacheBuckets = new Map();
@@ -279,7 +538,10 @@ async function restoreOrdersFromCache(cachedOrders) {
         cabinet_type: cached.cabinet_type,
         color: cached.color,
         quantity: Number(cached.quantity) || 1,
+        start_date: cached.start_date || new Date().toISOString().split("T")[0],
         completion_date: cached.completion_date,
+        completed_processes: Array.isArray(cached.completed_processes) ? cached.completed_processes : [],
+        active_process_progress: Number(cached.active_process_progress) || 0,
       };
 
       const response = await fetch(`${BACKEND_URL}/orders`, {
@@ -323,7 +585,10 @@ async function reconcileBackendWithCache(backendOrders, cachedOrders) {
         cabinet_type: cached.cabinet_type,
         color: cached.color,
         quantity: Number(cached.quantity) || 1,
+        start_date: cached.start_date || new Date().toISOString().split("T")[0],
         completion_date: cached.completion_date,
+        completed_processes: Array.isArray(cached.completed_processes) ? cached.completed_processes : [],
+        active_process_progress: Number(cached.active_process_progress) || 0,
       };
       await fetch(`${BACKEND_URL}/orders`, {
         method: "POST",
@@ -467,13 +732,28 @@ function calculateStageUtilizations(orders) {
   );
   const safeWeight = totalWeight || 1;
 
+  const getStageProgressForOrder = (order, processName) => {
+    if (isStatusCompleted(order)) {
+      return 100;
+    }
+
+    const completedSet = new Set(getCompletedProcessList(order));
+    if (completedSet.has(processName)) {
+      return 100;
+    }
+
+    const nextProcessName = getNextPendingProcess(order);
+    if (nextProcessName === processName) {
+      return getActiveProcessProgress(order);
+    }
+
+    return 0;
+  };
+
   return PROCESS_FLOW.map((process) => {
     const weightedProgress = orders.reduce((sum, order) => {
       const weight = Number(order.quantity) || 1;
-      const processProgress = getProcessProgressPercent(
-        getNormalizedProgress(order),
-        process.name
-      );
+      const processProgress = getStageProgressForOrder(order, process.name);
       return sum + processProgress * weight;
     }, 0);
 
@@ -760,10 +1040,11 @@ async function loadOrders() {
           writeCachedOrders(restoredOrders);
           renderDashboard(restoredOrders);
           if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-            const selectedOrder = restoredOrders.find((item) => item.id === activeProjectOrderId);
+            const selectedOrder = findOrderById(restoredOrders, activeProjectOrderId);
             renderMachineUtilization(selectedOrder ? [selectedOrder] : restoredOrders);
           }
           renderOrdersTable(restoredOrders);
+          refreshActiveProjectView();
           return;
         }
       }
@@ -782,10 +1063,11 @@ async function loadOrders() {
           writeCachedOrders(reconciledOrders);
           renderDashboard(reconciledOrders);
           if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-            const selectedOrder = reconciledOrders.find((item) => item.id === activeProjectOrderId);
+            const selectedOrder = findOrderById(reconciledOrders, activeProjectOrderId);
             renderMachineUtilization(selectedOrder ? [selectedOrder] : reconciledOrders);
           }
           renderOrdersTable(reconciledOrders);
+          refreshActiveProjectView();
           return;
         }
       }
@@ -800,20 +1082,22 @@ async function loadOrders() {
 
     renderDashboard(orders);
     if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-      const selectedOrder = orders.find((item) => item.id === activeProjectOrderId);
+      const selectedOrder = findOrderById(orders, activeProjectOrderId);
       renderMachineUtilization(selectedOrder ? [selectedOrder] : orders);
     }
     renderOrdersTable(orders);
+    refreshActiveProjectView();
   } catch (error) {
     console.error("Failed to load orders:", error);
     const fallbackOrders = cachedOrders;
     globalOrders = fallbackOrders;
     renderDashboard(fallbackOrders);
     if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-      const selectedOrder = fallbackOrders.find((item) => item.id === activeProjectOrderId);
+      const selectedOrder = findOrderById(fallbackOrders, activeProjectOrderId);
       renderMachineUtilization(selectedOrder ? [selectedOrder] : fallbackOrders);
     }
     renderOrdersTable(fallbackOrders);
+    refreshActiveProjectView();
     if (!fallbackOrders.length) {
       ordersTable.innerHTML =
         '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
@@ -862,6 +1146,8 @@ if (orderForm) {
           completion_date: payload.completion_date,
           status: "In Progress",
           progress: 0,
+          completed_processes: [],
+          active_process_progress: 0,
           priority: "MEDIUM",
         };
         const nextOrders = [...readCachedOrders(), fallbackOrder];
@@ -883,6 +1169,8 @@ if (orderForm) {
         completion_date: payload.completion_date,
         status: "In Progress",
         progress: 0,
+        completed_processes: [],
+        active_process_progress: 0,
         priority: "MEDIUM",
       };
       const nextOrders = [...readCachedOrders(), fallbackOrder];
@@ -892,6 +1180,49 @@ if (orderForm) {
       renderOrdersTable(nextOrders);
       alert("Backend is offline. Order saved locally and will auto-restore.");
       orderForm.reset();
+    }
+  });
+}
+
+if (attendanceForm) {
+  attendanceForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const date = String(attendanceDateInput?.value || "").trim();
+    const resource = String(attendanceResourceSelect?.value || "").trim().toUpperCase();
+    const reason = String(attendanceReasonInput?.value || "").trim();
+
+    if (!date || !resource) {
+      alert("Please select both date and resource.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, resource, reason }),
+      });
+
+      if (!response.ok) {
+        let message = "Failed to mark attendance.";
+        try {
+          const payload = await response.json();
+          if (payload?.error) {
+            message = payload.error;
+          }
+        } catch (_ignored) {
+          // Keep fallback message.
+        }
+        throw new Error(message);
+      }
+
+      if (attendanceReasonInput) {
+        attendanceReasonInput.value = "";
+      }
+      await loadAttendance();
+      await loadOrders();
+    } catch (error) {
+      alert(error.message || "Failed to mark attendance.");
     }
   });
 }
@@ -916,12 +1247,68 @@ async function deleteOrder(id) {
   }
 }
 
-function openProjectView(orderId) {
+async function completeProcess(orderId, processName) {
+  const requestOptions = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ process: processName }),
+  };
+
+  const tryComplete = async () => {
+    return fetch(`${BACKEND_URL}/orders/${orderId}/complete-process`, requestOptions);
+  };
+
+  const wakeBackend = async () => {
+    try {
+      await fetch(`${BACKEND_URL}/orders`, { method: "GET" });
+    } catch (_ignored) {
+      // Best-effort wake-up request.
+    }
+  };
+
+  try {
+    let response;
+    try {
+      response = await tryComplete();
+    } catch (_networkError) {
+      await wakeBackend();
+      response = await tryComplete();
+    }
+
+    if (!response.ok) {
+      let errorMessage = "Failed to complete task.";
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (_ignored) {
+        // Keep default error message.
+      }
+      throw new Error(errorMessage);
+    }
+
+    await loadOrders();
+    openProjectView(orderId);
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (message.toLowerCase().includes("failed to fetch")) {
+      alert("Backend is waking up or unreachable. Please wait a moment, then click Complete Task again.");
+      return;
+    }
+    alert(message || "Failed to complete task.");
+  }
+}
+
+window.completeProcess = completeProcess;
+
+function openProjectView(orderId, options = {}) {
   if (!projectView || !timelineSteps || !projectSubtitle) {
     return;
   }
+  const shouldScroll = options.scroll !== false;
 
-  const order = globalOrders.find((item) => item.id === orderId);
+  const order = findOrderById(globalOrders, orderId);
   if (!order) {
     return;
   }
@@ -998,77 +1385,57 @@ function openProjectView(orderId) {
     };
   });
 
-  const getProcessStatus = (processName, progress, machineId, currentOrderId) => {
-    const stage = getProcessRange(processName);
-    if (!stage) {
-      return { status: "Unknown", color: "#B6771D", textColor: "#ffffff" };
-    }
+  const completedProcesses = new Set(getCompletedProcessList(order));
+  const nextPendingProcess = getNextPendingProcess(order);
+  const activeProcessProgress = getActiveProcessProgress(order);
 
-    if (progress >= stage.end) {
+  const getProcessStatus = (processName) => {
+    if (completedProcesses.has(processName)) {
       return { status: "Completed", color: "#7B542F", textColor: "#ffffff" };
     }
-
-    if (progress >= stage.start && progress < stage.end) {
-      if (!machineId || machineId === "N/A") {
-        return { status: "Ongoing", color: "#FF9D00", textColor: "#ffffff" };
-      }
-
-      const currentOrder = globalOrders.find((o) => o.id === currentOrderId);
-      if (!currentOrder) {
-        return { status: "Ongoing", color: "#FF9D00", textColor: "#ffffff" };
-      }
-
-      let blockedByHigherPriority = false;
-      for (const otherOrder of globalOrders) {
-        if (otherOrder.id === currentOrderId) {
-          continue;
-        }
-        const otherProgress = getNormalizedProgress(otherOrder);
-        if (otherProgress >= stage.start && otherProgress < stage.end) {
-          const currentDeadline = new Date(currentOrder.completion_date);
-          const otherDeadline = new Date(otherOrder.completion_date);
-          if (otherDeadline < currentDeadline) {
-            blockedByHigherPriority = true;
-            break;
-          }
-        }
-      }
-
-      if (blockedByHigherPriority) {
-        return { status: "Pending", color: "#FFCF71", textColor: "#7B542F" };
-      }
-
-      return { status: "Ongoing", color: "#FF9D00", textColor: "#ffffff" };
+    if (nextPendingProcess === processName) {
+      return {
+        status: "Ongoing",
+        color: "#FF9D00",
+        textColor: "#ffffff",
+      };
     }
-
     return { status: "Pending", color: "#FFCF71", textColor: "#7B542F" };
   };
 
   let scheduleCursor = 0;
-  const orderProgress = getNormalizedProgress(order);
   const assignmentRows = orderAssignments
     .map((assignment, index) => {
-      const statusInfo = getProcessStatus(
-        assignment.process,
-        orderProgress,
-        assignment.machine,
-        order.id
-      );
+      const statusInfo = getProcessStatus(assignment.process);
       const durationMinutes = processDurations[index] || 0;
       const startInfo = formatWorkMinute(scheduleCursor);
       const endInfo = formatWorkMinute(scheduleCursor + durationMinutes);
       scheduleCursor += durationMinutes;
+      const canComplete = nextPendingProcess === assignment.process;
+      const escapedProcess = assignment.process.replace(/'/g, "\\'");
+      const actionContent = canComplete
+        ? `<button
+            onclick="completeProcess(${order.id}, '${escapedProcess}')"
+            class="px-2 py-1 rounded text-xs font-semibold"
+            style="background: #7B542F; color: #ffffff;"
+          >
+            Complete Task
+          </button>`
+        : '<span class="text-xs" style="color: #B6771D;">-</span>';
 
       return `
         <tr style="background: #FFFBF3;">
           <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${assignment.process}</td>
           <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${startInfo.label}</td>
           <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${endInfo.label}</td>
-          <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${assignment.machine && assignment.machine !== "N/A" ? assignment.machine : "Manual Station"}</td>
+          <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${formatAssignedResource(assignment)}</td>
           <td class="p-2 text-center" style="border: 1px solid #FFCF71;">
             <span class="px-2 py-1 rounded text-xs font-semibold" style="background: ${statusInfo.color}; color: ${statusInfo.textColor};">
               ${statusInfo.status}
             </span>
+          </td>
+          <td class="p-2 text-center" style="border: 1px solid #FFCF71;">
+            ${actionContent}
           </td>
         </tr>
       `;
@@ -1082,8 +1449,9 @@ function openProjectView(orderId) {
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Process</th>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Start Time</th>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Finish Time</th>
-          <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Assigned Machine</th>
+          <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Assigned Resource</th>
           <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Status</th>
+          <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -1108,7 +1476,9 @@ function openProjectView(orderId) {
   }
   renderMachineUtilization([order]);
   projectView.classList.remove("hidden");
-  projectView.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (shouldScroll) {
+    projectView.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 if (closeProjectView) {
@@ -1161,9 +1531,13 @@ if (ordersNextBtn) {
 }
 
 loadOrders();
+loadAttendance();
 setInterval(loadOrders, 5000);
 
 if (demoDateInput) {
+  demoDateInput.addEventListener("input", () => {
+    loadOrders();
+  });
   demoDateInput.addEventListener("change", () => {
     loadOrders();
   });
@@ -1174,6 +1548,10 @@ if (clearDemoDateBtn) {
     demoDateInput.value = "";
     loadOrders();
   });
+}
+
+if (attendanceDateInput && !attendanceDateInput.value) {
+  attendanceDateInput.value = new Date().toISOString().split("T")[0];
 }
 
 if (downloadPdfBtn) {
