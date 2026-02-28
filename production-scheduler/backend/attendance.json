@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "date": "2026-02-28",
+    "resource": "NSH1",
+    "role": "Non-Skilled Helper",
+    "reason": ""
+  },
+  {
+    "id": 2,
+    "date": "2026-02-28",
+    "resource": "NSH2",
+    "role": "Non-Skilled Helper",
+    "reason": ""
+  },
+  {
+    "id": 3,
+    "date": "2026-02-28",
+    "resource": "NSH5",
+    "role": "Non-Skilled Helper",
+    "reason": ""
+  },
+  {
+    "id": 4,
+    "date": "2026-02-28",
+    "resource": "NSH4",
+    "role": "Non-Skilled Helper",
+    "reason": ""
+  },
+  {
+    "id": 5,
+    "date": "2026-02-28",
+    "resource": "MO1",
+    "role": "Machine Operator",
+    "reason": ""
+  }
+]
