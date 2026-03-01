@@ -289,6 +289,22 @@ def calculate_machine_schedule(orders, attendance_records=None):
     
     schedule = {}
     assignments = []
+
+    def find_worker_start(worker_id, earliest_start, machine_id, days_needed):
+        """Return the earliest valid start for a worker, honoring machine lock and absences."""
+        worker = workers[worker_id]
+        candidate_start = max(earliest_start, worker["available_until"])
+        if machine_id:
+            machine = machines[machine_id]
+            candidate_start = max(candidate_start, machine["available_until"])
+        candidate_start = next_available_day(worker_id, candidate_start, absence_index)
+        while has_absence_during_stage(worker_id, candidate_start, days_needed, absence_index):
+            candidate_start = next_available_day(
+                worker_id,
+                candidate_start + timedelta(days=1),
+                absence_index
+            )
+        return candidate_start
     
     for order in sorted_orders:
         order_id = order["id"]
@@ -306,34 +322,67 @@ def calculate_machine_schedule(orders, attendance_records=None):
             hours_needed = process["hours_per_cabinet"] * quantity
             days_needed = max(1, int(hours_needed / work_hours_per_day))
             
-            # Select the earliest-available worker for the required role.
-            available_worker = None
-            best_start_date = None
-            for worker_id, worker in workers.items():
-                if worker["type"] == worker_type:
-                    if machine_id and worker_id != machine_id:
-                        continue
+            available_workers = []
+            if process_name == "Assembly":
+                # Assembly needs a team: 2 carpenters + 1 helper (duration unchanged).
+                role_requirements = [("Carpenter", 2), ("Helper", 1)]
+                selected_workers = []
+                team_start = order_start
 
-                    candidate_start = max(order_start, worker["available_until"])
-                    if machine_id:
-                        machine = machines[machine_id]
-                        candidate_start = max(candidate_start, machine["available_until"])
-                    candidate_start = next_available_day(worker_id, candidate_start, absence_index)
-                    while has_absence_during_stage(worker_id, candidate_start, days_needed, absence_index):
-                        candidate_start = next_available_day(
-                            worker_id,
-                            candidate_start + timedelta(days=1),
-                            absence_index
-                        )
+                for role_name, required_count in role_requirements:
+                    role_candidates = []
+                    for worker_id, worker in workers.items():
+                        if worker["type"] != role_name or worker_id in selected_workers:
+                            continue
+                        candidate_start = find_worker_start(worker_id, order_start, None, days_needed)
+                        role_candidates.append((candidate_start, worker_id))
 
-                    if best_start_date is None or candidate_start < best_start_date:
-                        best_start_date = candidate_start
-                        available_worker = worker_id
+                    role_candidates.sort(key=lambda item: (item[0], item[1]))
+                    chosen = role_candidates[:required_count]
+                    if len(chosen) < required_count:
+                        selected_workers = []
+                        break
 
-            if available_worker is None:
-                continue
+                    selected_workers.extend(worker_id for _, worker_id in chosen)
+                    latest_role_start = max(start_date for start_date, _ in chosen)
+                    if latest_role_start > team_start:
+                        team_start = latest_role_start
 
-            start_date = best_start_date
+                if not selected_workers:
+                    continue
+
+                # Align the team start so every selected worker is available for the full stage span.
+                while True:
+                    adjusted = False
+                    for worker_id in selected_workers:
+                        candidate_start = find_worker_start(worker_id, team_start, None, days_needed)
+                        if candidate_start > team_start:
+                            team_start = candidate_start
+                            adjusted = True
+                    if not adjusted:
+                        break
+
+                available_workers = selected_workers
+                start_date = team_start
+            else:
+                # Select the earliest-available worker for the required role.
+                available_worker = None
+                best_start_date = None
+                for worker_id, worker in workers.items():
+                    if worker["type"] == worker_type:
+                        if machine_id and worker_id != machine_id:
+                            continue
+
+                        candidate_start = find_worker_start(worker_id, order_start, machine_id, days_needed)
+                        if best_start_date is None or candidate_start < best_start_date:
+                            best_start_date = candidate_start
+                            available_worker = worker_id
+
+                if available_worker is None:
+                    continue
+
+                available_workers = [available_worker]
+                start_date = best_start_date
             
             end_date = start_date + timedelta(days=days_needed)
             
@@ -342,7 +391,7 @@ def calculate_machine_schedule(orders, attendance_records=None):
                 "start": start_date.strftime("%Y-%m-%d"),
                 "end": end_date.strftime("%Y-%m-%d"),
                 "days": days_needed,
-                "worker": available_worker,
+                "worker": ", ".join(available_workers),
                 "machine": machine_id if machine_id else "N/A"
             }
             
@@ -350,12 +399,13 @@ def calculate_machine_schedule(orders, attendance_records=None):
             assignments.append({
                 "order": order_name,
                 "process": process_name,
-                "worker": available_worker,
+                "worker": ", ".join(available_workers),
                 "machine": machine_id if machine_id else "N/A"
             })
             
             # Reserve resources until this stage completes.
-            workers[available_worker]["available_until"] = end_date
+            for worker_id in available_workers:
+                workers[worker_id]["available_until"] = end_date
             if machine_id:
                 machines[machine_id]["available_until"] = end_date
         
