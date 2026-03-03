@@ -201,6 +201,22 @@ def normalize_order_state(order):
     return order
 
 
+def sanitize_order_dates(order):
+    """Ensure each order keeps a valid non-negative date span."""
+    start_raw = str(order.get("start_date", "")).strip()
+    end_raw = str(order.get("completion_date", "")).strip()
+    try:
+        start = datetime.strptime(start_raw, "%Y-%m-%d").date()
+        end = datetime.strptime(end_raw, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+
+    if end < start:
+        order["start_date"] = end.strftime("%Y-%m-%d")
+        return True
+    return False
+
+
 def calculate_priority_and_machines(days_until_completion):
     """Determine priority and machine allocation."""
     is_priority = days_until_completion <= 2
@@ -487,9 +503,15 @@ def get_orders():
     else:
         today = datetime.now().date()
 
+    orders_changed = False
     for order in orders:
+        if sanitize_order_dates(order):
+            orders_changed = True
         normalize_order_state(order)
         apply_priority_settings(order, today)
+
+    if orders_changed:
+        save_orders(orders)
 
     # Return orders in earliest-due-date order.
     orders.sort(key=lambda x: x["completion_date"])
@@ -522,14 +544,22 @@ def create_order():
     except (TypeError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
 
+    completion_date = str(payload["completion_date"]).strip()
+    start_date = str(payload["start_date"]).strip()
+    try:
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    if end_date < start_date_obj:
+        return jsonify({"error": "Completion date cannot be earlier than start date."}), 400
+
     # Create and persist a new order record.
     orders = load_orders()
     today = datetime.now().date()
-    completion_date = payload["completion_date"]
-    start_date = payload["start_date"]
     
     # Initialize urgency and machine count from due-date distance.
-    end_date = datetime.strptime(completion_date, "%Y-%m-%d").date()
     days_remaining = (end_date - today).days
     
     if days_remaining <= 7:

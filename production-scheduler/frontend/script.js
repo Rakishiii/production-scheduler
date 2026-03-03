@@ -42,6 +42,7 @@ const orderForm = document.getElementById("orderForm");
 const ordersTable = document.getElementById("ordersTable");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 const demoDateInput = document.getElementById("demoDate");
+const completionDateInput = document.getElementById("completionDate");
 const clearDemoDateBtn = document.getElementById("clearDemoDate");
 const projectView = document.getElementById("projectView");
 const closeProjectView = document.getElementById("closeProjectView");
@@ -914,10 +915,11 @@ function updateOrdersPagination(totalItems) {
 
 function renderOrderRow(order) {
   const progress = getNormalizedProgress(order);
-  const days = Math.ceil(
+  const rawDays = Math.ceil(
     (new Date(order.completion_date) - new Date(order.start_date)) /
       (1000 * 60 * 60 * 24)
   );
+  const days = Number.isFinite(rawDays) ? Math.max(0, rawDays) : 0;
 
   const completed = isCompleted(order);
   const effectivePriority = getEffectivePriority(order);
@@ -1073,8 +1075,17 @@ if (orderForm) {
       color: document.getElementById("color").value,
       quantity: parseInt(document.getElementById("quantity").value, 10),
       start_date: demoDate || today,
-      completion_date: document.getElementById("completionDate").value,
+      completion_date: completionDateInput?.value || "",
     };
+
+    if (!payload.completion_date) {
+      alert("Please select a completion date.");
+      return;
+    }
+    if (payload.completion_date < payload.start_date) {
+      alert("Completion date cannot be earlier than the start date.");
+      return;
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/orders`, {
@@ -1089,52 +1100,22 @@ if (orderForm) {
           mergeOrderIntoCache(createdOrder);
         }
         orderForm.reset();
+        updateCompletionDateMin();
         loadOrders();
       } else {
-        const fallbackOrder = {
-          id: Date.now(),
-          customer_name: payload.customer_name,
-          cabinet_type: payload.cabinet_type,
-          color: payload.color,
-          quantity: payload.quantity,
-          start_date: payload.start_date,
-          completion_date: payload.completion_date,
-          status: "In Progress",
-          progress: 0,
-          completed_processes: [],
-          active_process_progress: 0,
-          priority: "MEDIUM",
-        };
-        const nextOrders = [...readCachedOrders(), fallbackOrder];
-        writeCachedOrders(nextOrders);
-        globalOrders = nextOrders;
-        renderDashboard(nextOrders);
-        renderOrdersTable(nextOrders);
-        alert("Backend is not ready yet. Order saved locally and will auto-restore.");
-        orderForm.reset();
+        let errorMessage = "Failed to add order.";
+        try {
+          const payload = await response.json();
+          if (payload?.error) {
+            errorMessage = payload.error;
+          }
+        } catch (_ignored) {
+          // Keep fallback message.
+        }
+        alert(errorMessage);
       }
     } catch (error) {
-      const fallbackOrder = {
-        id: Date.now(),
-        customer_name: payload.customer_name,
-        cabinet_type: payload.cabinet_type,
-        color: payload.color,
-        quantity: payload.quantity,
-        start_date: payload.start_date,
-        completion_date: payload.completion_date,
-        status: "In Progress",
-        progress: 0,
-        completed_processes: [],
-        active_process_progress: 0,
-        priority: "MEDIUM",
-      };
-      const nextOrders = [...readCachedOrders(), fallbackOrder];
-      writeCachedOrders(nextOrders);
-      globalOrders = nextOrders;
-      renderDashboard(nextOrders);
-      renderOrdersTable(nextOrders);
-      alert("Backend is offline. Order saved locally and will auto-restore.");
-      orderForm.reset();
+      alert("Backend is offline or unreachable. Order was not saved.");
     }
   });
 }
@@ -1491,9 +1472,11 @@ setInterval(loadOrders, 5000);
 
 if (demoDateInput) {
   demoDateInput.addEventListener("input", () => {
+    updateCompletionDateMin();
     loadOrders();
   });
   demoDateInput.addEventListener("change", () => {
+    updateCompletionDateMin();
     loadOrders();
   });
 }
@@ -1501,6 +1484,7 @@ if (demoDateInput) {
 if (clearDemoDateBtn) {
   clearDemoDateBtn.addEventListener("click", () => {
     demoDateInput.value = "";
+    updateCompletionDateMin();
     loadOrders();
   });
 }
@@ -1508,6 +1492,20 @@ if (clearDemoDateBtn) {
 if (attendanceDateInput && !attendanceDateInput.value) {
   attendanceDateInput.value = new Date().toISOString().split("T")[0];
 }
+
+function updateCompletionDateMin() {
+  if (!completionDateInput) {
+    return;
+  }
+  const today = new Date().toISOString().split("T")[0];
+  const minDate = demoDateInput?.value || today;
+  completionDateInput.min = minDate;
+  if (completionDateInput.value && completionDateInput.value < minDate) {
+    completionDateInput.value = minDate;
+  }
+}
+
+updateCompletionDateMin();
 
 if (downloadPdfBtn) {
   downloadPdfBtn.addEventListener("click", async () => {
