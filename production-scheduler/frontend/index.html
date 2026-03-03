@@ -290,6 +290,79 @@
         line-height: 1.35;
         color: #64452D;
       }
+      .spec-image-frame {
+        margin-top: 0.6rem;
+        height: 230px;
+        border: 1px solid #E7C777;
+        border-radius: 0.65rem;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .spec-image-trigger {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        cursor: zoom-in;
+      }
+      .spec-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center;
+        transition: transform 0.2s ease;
+      }
+      .spec-image-trigger:hover .spec-image {
+        transform: scale(1.06);
+      }
+      .spec-image-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(33, 24, 17, 0.78);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .spec-image-modal.open {
+        display: flex;
+      }
+      .spec-image-modal-content {
+        width: min(92vw, 1200px);
+        max-height: 90vh;
+        background: #fff;
+        border: 2px solid #FFCF71;
+        border-radius: 0.9rem;
+        padding: 0.7rem;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+        position: relative;
+      }
+      .spec-image-modal-close {
+        position: absolute;
+        top: 0.55rem;
+        right: 0.55rem;
+        border: 0;
+        border-radius: 0.45rem;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #fff;
+        background: #7B542F;
+        cursor: pointer;
+      }
+      .spec-image-modal-img {
+        width: 100%;
+        height: min(82vh, 840px);
+        object-fit: contain;
+        border-radius: 0.5rem;
+        background: #fff;
+      }
       .swatch-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -776,10 +849,21 @@
                     <tr><td>Fixed Shelves</td><td>2 pcs</td><td>600 x 560</td></tr>
                   </tbody>
                 </table>
-                <p class="spec-note">
-                  Hardware: 4 hinges, 2 handles, 8 screws.<br />
-                  Machine/Holes: edge banding + hinge/cam points.
-                </p>
+                <div class="spec-image-frame">
+                  <button
+                    type="button"
+                    class="spec-image-trigger"
+                    data-spec-image="./8.png"
+                    data-spec-title="Tall Cabinet"
+                    aria-label="Open Tall Cabinet image"
+                  >
+                    <img
+                      src="./8.png"
+                      alt="Tall Cabinet"
+                      class="spec-image"
+                    />
+                  </button>
+                </div>
               </div>
 
               <div class="spec-sheet-card">
@@ -801,10 +885,21 @@
                     <tr><td>Fixed Shelves</td><td>2 pcs</td><td>1200 x 320</td></tr>
                   </tbody>
                 </table>
-                <p class="spec-note">
-                  Hardware: 8 hinges, 4 handles, hanger set.<br />
-                  Machine/Holes: shelf pin + hinge cup points.
-                </p>
+                <div class="spec-image-frame">
+                  <button
+                    type="button"
+                    class="spec-image-trigger"
+                    data-spec-image="./9.png"
+                    data-spec-title="Hanging Cabinet"
+                    aria-label="Open Hanging Cabinet image"
+                  >
+                    <img
+                      src="./9.png"
+                      alt="Hanging Cabinet"
+                      class="spec-image"
+                    />
+                  </button>
+                </div>
               </div>
 
               <div class="spec-sheet-card">
@@ -826,10 +921,21 @@
                     <tr><td>Support Rails</td><td>2 pcs</td><td>760 x 70</td></tr>
                   </tbody>
                 </table>
-                <p class="spec-note">
-                  Hardware: 24 screws, 12 dowels, wall bracket set.<br />
-                  Machine/Holes: cam-lock + bracket holes.
-                </p>
+                <div class="spec-image-frame">
+                  <button
+                    type="button"
+                    class="spec-image-trigger"
+                    data-spec-image="./10.png"
+                    data-spec-title="Shelves"
+                    aria-label="Open Shelves image"
+                  >
+                    <img
+                      src="./10.png"
+                      alt="Shelves"
+                      class="spec-image"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -970,6 +1076,12 @@
         </div>
       </section>
     </main>
+    <div id="specImageModal" class="spec-image-modal" aria-hidden="true">
+      <div class="spec-image-modal-content">
+        <button id="specImageModalClose" type="button" class="spec-image-modal-close">Close</button>
+        <img id="specImageModalImg" src="" alt="Cabinet specification preview" class="spec-image-modal-img" />
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -1018,6 +1130,55 @@
       const attendancePage = document.getElementById("attendancePage");
       const cabinetPage = document.getElementById("cabinetPage");
       const decisionPage = document.getElementById("decisionPage");
+      const specImageModal = document.getElementById("specImageModal");
+      const specImageModalImg = document.getElementById("specImageModalImg");
+      const specImageModalClose = document.getElementById("specImageModalClose");
+
+      const openSpecImageModal = (imageSrc, imageTitle) => {
+        if (!specImageModal || !specImageModalImg) {
+          return;
+        }
+        specImageModalImg.src = imageSrc;
+        specImageModalImg.alt = `${imageTitle} preview`;
+        specImageModal.classList.add("open");
+        specImageModal.setAttribute("aria-hidden", "false");
+      };
+
+      const closeSpecImageModal = () => {
+        if (!specImageModal || !specImageModalImg) {
+          return;
+        }
+        specImageModal.classList.remove("open");
+        specImageModal.setAttribute("aria-hidden", "true");
+        specImageModalImg.src = "";
+      };
+
+      document.querySelectorAll(".spec-image-trigger").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const imageSrc = btn.getAttribute("data-spec-image") || "";
+          const imageTitle = btn.getAttribute("data-spec-title") || "Cabinet";
+          if (!imageSrc) {
+            return;
+          }
+          openSpecImageModal(imageSrc, imageTitle);
+        });
+      });
+
+      if (specImageModalClose) {
+        specImageModalClose.addEventListener("click", closeSpecImageModal);
+      }
+      if (specImageModal) {
+        specImageModal.addEventListener("click", (event) => {
+          if (event.target === specImageModal) {
+            closeSpecImageModal();
+          }
+        });
+      }
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeSpecImageModal();
+        }
+      });
 
       const setActivePage = (active) => {
         const isDashboard = active === "dashboard";
