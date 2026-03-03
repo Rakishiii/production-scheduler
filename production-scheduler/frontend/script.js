@@ -1026,57 +1026,12 @@ async function loadOrders() {
     const machineSchedule = data.machine_schedule || {};
     const assignments = data.assignments || [];
 
-    // Render snapshot immediately while backend warms up from a cold start.
-    if (!orders.length && cachedOrders.length && !demoDate && !isRestoringFromCache) {
-      const restored = await restoreOrdersFromCache(cachedOrders);
-      if (restored) {
-        const retry = await fetch(`${BACKEND_URL}/orders`);
-        if (retry.ok) {
-          const retryData = await retry.json();
-          const restoredOrders = Array.isArray(retryData) ? retryData : retryData.orders || [];
-          globalMachineSchedule = retryData.machine_schedule || {};
-          globalAssignments = retryData.assignments || [];
-          globalOrders = restoredOrders;
-          writeCachedOrders(restoredOrders);
-          renderDashboard(restoredOrders);
-          if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-            const selectedOrder = findOrderById(restoredOrders, activeProjectOrderId);
-            renderMachineUtilization(selectedOrder ? [selectedOrder] : restoredOrders);
-          }
-          renderOrdersTable(restoredOrders);
-          refreshActiveProjectView();
-          return;
-        }
-      }
-    }
-
-    if (cachedOrders.length && !demoDate && !isReconcilingFromCache) {
-      const changed = await reconcileBackendWithCache(orders, cachedOrders);
-      if (changed) {
-        const retry = await fetch(`${BACKEND_URL}/orders`);
-        if (retry.ok) {
-          const retryData = await retry.json();
-          const reconciledOrders = Array.isArray(retryData) ? retryData : retryData.orders || [];
-          globalMachineSchedule = retryData.machine_schedule || {};
-          globalAssignments = retryData.assignments || [];
-          globalOrders = reconciledOrders;
-          writeCachedOrders(reconciledOrders);
-          renderDashboard(reconciledOrders);
-          if (machineUtilizationSection && !machineUtilizationSection.classList.contains("hidden")) {
-            const selectedOrder = findOrderById(reconciledOrders, activeProjectOrderId);
-            renderMachineUtilization(selectedOrder ? [selectedOrder] : reconciledOrders);
-          }
-          renderOrdersTable(reconciledOrders);
-          refreshActiveProjectView();
-          return;
-        }
-      }
-    }
+    // Backend is the source of truth. Do not mutate backend from local browser cache.
 
     globalMachineSchedule = machineSchedule;
     globalAssignments = assignments;
     globalOrders = orders;
-    if (demoDate || cachedOrders.length) {
+    if (!demoDate) {
       writeCachedOrders(orders);
     }
 
