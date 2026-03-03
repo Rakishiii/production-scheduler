@@ -94,6 +94,14 @@ function parseDate(value) {
   return date;
 }
 
+function getLocalDateISO() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function formatClock(totalMinutes) {
   const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
   const hours = Math.floor(normalized / 60);
@@ -539,7 +547,7 @@ async function restoreOrdersFromCache(cachedOrders) {
         cabinet_type: cached.cabinet_type,
         color: cached.color,
         quantity: Number(cached.quantity) || 1,
-        start_date: cached.start_date || new Date().toISOString().split("T")[0],
+        start_date: cached.start_date || getLocalDateISO(),
         completion_date: cached.completion_date,
         completed_processes: Array.isArray(cached.completed_processes) ? cached.completed_processes : [],
         active_process_progress: Number(cached.active_process_progress) || 0,
@@ -586,7 +594,7 @@ async function reconcileBackendWithCache(backendOrders, cachedOrders) {
         cabinet_type: cached.cabinet_type,
         color: cached.color,
         quantity: Number(cached.quantity) || 1,
-        start_date: cached.start_date || new Date().toISOString().split("T")[0],
+        start_date: cached.start_date || getLocalDateISO(),
         completion_date: cached.completion_date,
         completed_processes: Array.isArray(cached.completed_processes) ? cached.completed_processes : [],
         active_process_progress: Number(cached.active_process_progress) || 0,
@@ -940,7 +948,11 @@ function renderOrderRow(order) {
   }
 
   return `
-    <tr class="border-b border-amber-100 hover:bg-amber-50">
+    <tr
+      class="border-b border-amber-100 hover:bg-amber-50"
+      style="cursor: pointer;"
+      onclick="openProjectView(${order.id})"
+    >
       <td class="p-2">
         <span class="px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: ${statusBg};">
           ${statusText}
@@ -967,6 +979,7 @@ function renderOrderRow(order) {
           onclick="openProjectView(${order.id})"
           class="px-2 py-1 rounded-lg text-white text-xs font-semibold mr-2"
           style="background: #FF9D00;"
+          data-stop-row-click="true"
           onmouseover="this.style.background='#B6771D'"
           onmouseout="this.style.background='#FF9D00'"
         >
@@ -976,6 +989,7 @@ function renderOrderRow(order) {
           onclick="deleteOrder(${order.id})"
           class="px-2 py-1 rounded-lg text-white text-xs font-semibold"
           style="background: #7B542F;"
+          data-stop-row-click="true"
           onmouseover="this.style.background='#B6771D'"
           onmouseout="this.style.background='#7B542F'"
         >
@@ -1067,7 +1081,7 @@ if (orderForm) {
     e.preventDefault();
 
     const demoDate = demoDateInput?.value;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateISO();
 
     const payload = {
       customer_name: document.getElementById("customerName").value,
@@ -1470,6 +1484,18 @@ loadOrders();
 loadAttendance();
 setInterval(loadOrders, 5000);
 
+if (ordersTable) {
+  ordersTable.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("[data-stop-row-click='true']")) {
+      event.stopPropagation();
+    }
+  });
+}
+
 if (demoDateInput) {
   demoDateInput.addEventListener("input", () => {
     updateCompletionDateMin();
@@ -1490,14 +1516,14 @@ if (clearDemoDateBtn) {
 }
 
 if (attendanceDateInput && !attendanceDateInput.value) {
-  attendanceDateInput.value = new Date().toISOString().split("T")[0];
+  attendanceDateInput.value = getLocalDateISO();
 }
 
 function updateCompletionDateMin() {
   if (!completionDateInput) {
     return;
   }
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateISO();
   const minDate = demoDateInput?.value || today;
   completionDateInput.min = minDate;
   if (completionDateInput.value && completionDateInput.value < minDate) {
