@@ -85,6 +85,14 @@ const WORKDAY_MORNING_MINUTES = WORKDAY_LUNCH_START_MINUTES - WORKDAY_START_MINU
 const WORKDAY_AFTERNOON_MINUTES = WORKDAY_END_MINUTES - WORKDAY_LUNCH_END_MINUTES; // 3 hours
 const WORKDAY_MINUTES = WORKDAY_MORNING_MINUTES + WORKDAY_AFTERNOON_MINUTES; // 7 productive hours
 const PROCESS_STATUS_OPTIONS = ["Completed", "Ongoing", "Pending"];
+const PROCESS_HOURS_PER_CABINET = {
+  "CNC Cutting": 1.5,
+  "CNC Edging": 1.5,
+  "CNC Routing": 1.5,
+  Assembly: 4,
+  "Quality Assurance": 0.5,
+  Packing: 1,
+};
 
 function parseDate(value) {
   if (!value) {
@@ -142,6 +150,147 @@ function formatWorkMinute(workMinuteOffset) {
       ? WORKDAY_START_MINUTES + minuteInDay
       : WORKDAY_LUNCH_END_MINUTES + (minuteInDay - WORKDAY_MORNING_MINUTES);
   const clock = formatClock(clockMinute);
+  return { day, clock, label: `D${day} ${clock}` };
+}
+
+function normalizeToWorkDateTime(dateTime) {
+  const value = new Date(dateTime.getTime());
+  while (true) {
+    const minuteOfDay = value.getHours() * 60 + value.getMinutes();
+    if (minuteOfDay < WORKDAY_START_MINUTES) {
+      value.setHours(8, 0, 0, 0);
+      return value;
+    }
+    if (minuteOfDay >= WORKDAY_LUNCH_START_MINUTES && minuteOfDay < WORKDAY_LUNCH_END_MINUTES) {
+      value.setHours(13, 0, 0, 0);
+      return value;
+    }
+    if (minuteOfDay >= WORKDAY_END_MINUTES) {
+      value.setDate(value.getDate() + 1);
+      value.setHours(8, 0, 0, 0);
+      continue;
+    }
+    return value;
+  }
+}
+
+function addWorkingMinutes(startDateTime, minutesToAdd) {
+  let current = normalizeToWorkDateTime(startDateTime);
+  let remaining = Math.max(1, Math.round(Number(minutesToAdd) || 0));
+
+  while (remaining > 0) {
+    current = normalizeToWorkDateTime(current);
+    const minuteOfDay = current.getHours() * 60 + current.getMinutes();
+    const segmentEnd = minuteOfDay < WORKDAY_LUNCH_START_MINUTES
+      ? WORKDAY_LUNCH_START_MINUTES
+      : WORKDAY_END_MINUTES;
+    const available = Math.max(0, segmentEnd - minuteOfDay);
+    if (available <= 0) {
+      current = normalizeToWorkDateTime(new Date(current.getTime() + 60000));
+      continue;
+    }
+
+    const consumed = Math.min(remaining, available);
+    current = new Date(current.getTime() + consumed * 60000);
+    remaining -= consumed;
+  }
+
+  return current;
+}
+
+function getProcessSortIndex(processName) {
+  const idx = PROCESS_FLOW.findIndex((process) => process.name === processName);
+  return idx >= 0 ? idx : PROCESS_FLOW.length;
+}
+
+function getPrimaryResourceKey(assignment) {
+  const machine = String(assignment?.machine || "").trim().toUpperCase();
+  if (machine && machine !== "N/A") {
+    return machine;
+  }
+
+  const worker = String(assignment?.worker || "").trim();
+  if (!worker) {
+    return "UNASSIGNED";
+  }
+  const first = worker.split(",")[0].trim();
+  return first || worker;
+}
+
+function buildGlobalProcessTimeMap() {
+  const tasks = [];
+
+  globalAssignments.forEach((assignment) => {
+    const orderToken = String(assignment?.order || "");
+    const orderId = Number(orderToken.replace(/^O-/, ""));
+    if (!Number.isFinite(orderId)) {
+      return;
+    }
+
+    const order = findOrderById(globalOrders, orderId);
+    if (!order) {
+      return;
+    }
+
+    const processName = String(assignment?.process || "").trim();
+    if (!processName) {
+      return;
+    }
+
+    const stageStartDate = globalMachineSchedule?.[String(orderId)]?.[processName]?.start || order.start_date;
+    const startDate = parseDate(stageStartDate);
+    if (!startDate) {
+      return;
+    }
+    startDate.setHours(8, 0, 0, 0);
+
+    const qty = Math.max(1, Number(order.quantity) || 1);
+    const hoursPerCabinet = PROCESS_HOURS_PER_CABINET[processName] || 1;
+    const durationMinutes = Math.max(1, Math.round(hoursPerCabinet * qty * 60));
+
+    tasks.push({
+      orderId,
+      processName,
+      resourceKey: getPrimaryResourceKey(assignment),
+      startDate,
+      durationMinutes,
+      sortIndex: getProcessSortIndex(processName),
+    });
+  });
+
+  tasks.sort((a, b) => (
+    a.startDate - b.startDate
+    || a.sortIndex - b.sortIndex
+    || a.orderId - b.orderId
+  ));
+
+  const availabilityByResource = new Map();
+  const processTimeMap = new Map();
+
+  tasks.forEach((task) => {
+    let start = normalizeToWorkDateTime(task.startDate);
+    const resourceAvailability = availabilityByResource.get(task.resourceKey);
+    if (resourceAvailability && resourceAvailability > start) {
+      start = normalizeToWorkDateTime(new Date(resourceAvailability.getTime()));
+    }
+
+    const end = addWorkingMinutes(start, task.durationMinutes);
+    availabilityByResource.set(task.resourceKey, new Date(end.getTime()));
+    processTimeMap.set(`${task.orderId}|${task.processName}`, {
+      start,
+      end,
+    });
+  });
+
+  return processTimeMap;
+}
+
+function formatProjectDateTimeLabel(projectStartDateValue, dateTime) {
+  const projectStart = parseDate(projectStartDateValue) || parseDate(new Date());
+  const dateOnly = new Date(dateTime.getTime());
+  dateOnly.setHours(0, 0, 0, 0);
+  const day = Math.max(1, Math.floor((dateOnly - projectStart) / (1000 * 60 * 60 * 24)) + 1);
+  const clock = formatClock(dateTime.getHours() * 60 + dateTime.getMinutes());
   return { day, clock, label: `D${day} ${clock}` };
 }
 
@@ -1397,9 +1546,26 @@ function openProjectView(orderId, options = {}) {
     projectDateRange.textContent = `Project Dates: ${formatDateForDisplay(order.start_date)} - ${formatDateForDisplay(order.completion_date)}`;
   }
 
-  const startDate = new Date(order.start_date);
-  const endDate = new Date(order.completion_date);
-  const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+  const orderStartDate = parseDate(order.start_date) || parseDate(new Date());
+  const orderEndDate = parseDate(order.completion_date) || orderStartDate;
+  const msPerDay = 1000 * 60 * 60 * 24;
+  let totalDays = Math.max(1, Math.ceil((orderEndDate - orderStartDate) / msPerDay));
+
+  const scheduleByProcess = globalMachineSchedule?.[String(orderId)] || {};
+  PROCESS_FLOW.forEach((process) => {
+    const stage = scheduleByProcess?.[process.name];
+    if (!stage) {
+      return;
+    }
+    const stageEnd = parseDate(stage.end);
+    if (!stageEnd) {
+      return;
+    }
+    const endOffset = Math.ceil((stageEnd - orderStartDate) / msPerDay);
+    if (Number.isFinite(endOffset) && endOffset > totalDays) {
+      totalDays = endOffset;
+    }
+  });
 
   const dayLabels = Array.from(
     { length: totalDays },
@@ -1422,16 +1588,47 @@ function openProjectView(orderId, options = {}) {
     return minutes;
   });
 
+  const getScheduledDayWindow = (processName) => {
+    const stage = scheduleByProcess?.[processName];
+    if (!stage) {
+      return null;
+    }
+    const stageStart = parseDate(stage.start);
+    const stageEnd = parseDate(stage.end);
+    if (!stageStart || !stageEnd) {
+      return null;
+    }
+
+    const startOffset = Math.max(0, Math.floor((stageStart - orderStartDate) / msPerDay));
+    const endOffset = Math.max(startOffset + 1, Math.ceil((stageEnd - orderStartDate) / msPerDay));
+    return { startOffset, endOffset };
+  };
+
   let cumulativePercent = 0;
   const productionRows = PROCESS_FLOW
     .map((step) => {
-      const offsetPercent = Math.min(100, cumulativePercent);
-      let widthPercent = step.ratio;
-      if (step === PROCESS_FLOW[PROCESS_FLOW.length - 1]) {
-        widthPercent = Math.max(0, 100 - cumulativePercent);
+      const scheduledWindow = getScheduledDayWindow(step.name);
+      let offsetPercent = 0;
+      let widthPercent = 0;
+
+      if (scheduledWindow) {
+        offsetPercent = Math.min(100, (scheduledWindow.startOffset / totalDays) * 100);
+        widthPercent = Math.max(
+          0,
+          Math.min(
+            100 - offsetPercent,
+            ((scheduledWindow.endOffset - scheduledWindow.startOffset) / totalDays) * 100
+          )
+        );
+      } else {
+        offsetPercent = Math.min(100, cumulativePercent);
+        widthPercent = step.ratio;
+        if (step === PROCESS_FLOW[PROCESS_FLOW.length - 1]) {
+          widthPercent = Math.max(0, 100 - cumulativePercent);
+        }
+        widthPercent = Math.min(100 - offsetPercent, widthPercent);
+        cumulativePercent += widthPercent;
       }
-      widthPercent = Math.min(100 - offsetPercent, widthPercent);
-      cumulativePercent += widthPercent;
 
       return `
         <div class="flex items-center gap-3">
@@ -1491,14 +1688,33 @@ function openProjectView(orderId, options = {}) {
     return { status: "Pending", color: "#FFCF71", textColor: "#7B542F" };
   };
 
+  const globalProcessTimeMap = buildGlobalProcessTimeMap();
   let scheduleCursor = 0;
   const assignmentRows = orderAssignments
     .map((assignment, index) => {
       const statusInfo = getProcessStatus(assignment.process);
       const durationMinutes = processDurations[index] || 0;
-      const startInfo = formatWorkMinute(scheduleCursor);
-      const endInfo = formatWorkMinute(scheduleCursor + durationMinutes);
-      scheduleCursor += durationMinutes;
+      const scheduledWindow = getScheduledDayWindow(assignment.process);
+      const processKey = `${order.id}|${assignment.process}`;
+      const globalTiming = globalProcessTimeMap.get(processKey);
+
+      let startInfo;
+      let endInfo;
+      if (globalTiming?.start && globalTiming?.end) {
+        startInfo = formatProjectDateTimeLabel(order.start_date, globalTiming.start);
+        endInfo = formatProjectDateTimeLabel(order.start_date, globalTiming.end);
+      } else {
+        let processStartOffset = scheduleCursor;
+        if (scheduledWindow) {
+          processStartOffset = scheduledWindow.startOffset * WORKDAY_MINUTES;
+        } else {
+          scheduleCursor += durationMinutes;
+        }
+
+        startInfo = formatWorkMinute(processStartOffset);
+        endInfo = formatWorkMinute(processStartOffset + durationMinutes);
+        scheduleCursor = Math.max(scheduleCursor, processStartOffset + durationMinutes);
+      }
       const escapedProcess = assignment.process.replace(/'/g, "\\'");
       const statusOptions = PROCESS_STATUS_OPTIONS.map((option) => (
         `<option value="${option}" ${option === statusInfo.status ? "selected" : ""}>${option}</option>`
