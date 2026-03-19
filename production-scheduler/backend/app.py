@@ -24,6 +24,8 @@ PROCESS_FLOW = [
 PROCESS_NAMES = [process["name"] for process in PROCESS_FLOW]
 PROCESS_RATIO_MAP = {process["name"]: process["ratio"] for process in PROCESS_FLOW}
 PROCESS_STATUS_VALUES = {"Completed", "Ongoing", "Pending"}
+MANUAL_STATUS_COMPLETED_STEP = 100.0 / max(1, len(PROCESS_FLOW))
+MANUAL_STATUS_ONGOING_STEP = MANUAL_STATUS_COMPLETED_STEP / 2.0
 RESOURCE_CATALOG = [
     {"id": "MO1", "role": "Machine Operator"},
     {"id": "MO2", "role": "Machine Operator"},
@@ -220,6 +222,56 @@ def normalize_process_status_overrides(order):
     changed = normalized != raw_overrides
     order["process_status_overrides"] = normalized
     return changed
+
+
+def apply_progress_from_status_overrides(order):
+    """Map manual process status overrides into a hybrid progress value."""
+    overrides = order.get("process_status_overrides")
+    if not isinstance(overrides, dict) or not overrides:
+        return False
+
+    previous_state = (
+        order.get("progress"),
+        order.get("status"),
+        list(order.get("completed_processes") or []),
+        order.get("active_process_progress", 0),
+    )
+
+    progress = 0.0
+    for process in PROCESS_FLOW:
+        status = str(overrides.get(process["name"], "")).strip().title()
+        if status == "Completed":
+            progress += MANUAL_STATUS_COMPLETED_STEP
+        elif status == "Ongoing":
+            progress += MANUAL_STATUS_ONGOING_STEP
+
+    progress = round(max(0.0, min(100.0, progress)), 2)
+    order["progress"] = progress
+    order["status"] = "Completed" if progress >= 100 else "In Progress"
+
+    # Keep legacy fields coherent for screens that still read these values.
+    completed_processes = []
+    for process in PROCESS_FLOW:
+        process_name = process["name"]
+        if str(overrides.get(process_name, "")).strip().title() == "Completed":
+            completed_processes.append(process_name)
+        else:
+            break
+    order["completed_processes"] = completed_processes
+
+    next_process = get_next_pending_process(completed_processes)
+    if next_process and str(overrides.get(next_process, "")).strip().title() == "Ongoing":
+        order["active_process_progress"] = int(round(clamp_percent(50)))
+    else:
+        order["active_process_progress"] = 0
+
+    current_state = (
+        order.get("progress"),
+        order.get("status"),
+        list(order.get("completed_processes") or []),
+        order.get("active_process_progress", 0),
+    )
+    return current_state != previous_state
 
 
 def sanitize_order_dates(order):
@@ -530,7 +582,10 @@ def get_orders():
             orders_changed = True
         if normalize_process_status_overrides(order):
             orders_changed = True
-        normalize_order_state(order)
+        if apply_progress_from_status_overrides(order):
+            orders_changed = True
+        else:
+            normalize_order_state(order)
         apply_priority_settings(order, today)
 
     if orders_changed:
@@ -613,8 +668,9 @@ def create_order():
         "priority": priority,
         "machines": machines
     }
-    normalize_order_state(order)
     normalize_process_status_overrides(order)
+    if not apply_progress_from_status_overrides(order):
+        normalize_order_state(order)
     apply_priority_settings(order, today)
 
     orders.append(order)
@@ -718,6 +774,8 @@ def update_process_status(order_id):
 
     normalize_process_status_overrides(order)
     order.setdefault("process_status_overrides", {})[process_name] = status
+    apply_progress_from_status_overrides(order)
+    apply_priority_settings(order, datetime.now().date())
     save_orders(orders)
     return jsonify(order)
 

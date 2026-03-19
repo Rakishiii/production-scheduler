@@ -93,6 +93,8 @@ const PROCESS_HOURS_PER_CABINET = {
   "Quality Assurance": 0.5,
   Packing: 1,
 };
+const MANUAL_STATUS_COMPLETED_STEP = 100 / Math.max(1, PROCESS_FLOW.length);
+const MANUAL_STATUS_ONGOING_STEP = MANUAL_STATUS_COMPLETED_STEP / 2;
 
 function parseDate(value) {
   if (!value) {
@@ -217,7 +219,9 @@ function getPrimaryResourceKey(assignment) {
   return first || worker;
 }
 
-function buildGlobalProcessTimeMap() {
+function buildGlobalProcessTimeMap(focusOrderId = null) {
+  const normalizedFocusOrderId = Number(focusOrderId);
+  const hasFocusOrder = Number.isFinite(normalizedFocusOrderId);
   const tasks = [];
 
   globalAssignments.forEach((assignment) => {
@@ -231,14 +235,17 @@ function buildGlobalProcessTimeMap() {
     if (!order) {
       return;
     }
+    const isFocusOrder = hasFocusOrder && orderId === normalizedFocusOrderId;
+    if (!isFocusOrder && isCompleted(order)) {
+      return;
+    }
 
     const processName = String(assignment?.process || "").trim();
     if (!processName) {
       return;
     }
 
-    const stageStartDate = globalMachineSchedule?.[String(orderId)]?.[processName]?.start || order.start_date;
-    const startDate = parseDate(stageStartDate);
+    const startDate = parseDate(order.start_date);
     if (!startDate) {
       return;
     }
@@ -246,7 +253,27 @@ function buildGlobalProcessTimeMap() {
 
     const qty = Math.max(1, Number(order.quantity) || 1);
     const hoursPerCabinet = PROCESS_HOURS_PER_CABINET[processName] || 1;
-    const durationMinutes = Math.max(1, Math.round(hoursPerCabinet * qty * 60));
+    const baseDurationMinutes = Math.max(1, Math.round(hoursPerCabinet * qty * 60));
+
+    const stageProgress = getProcessProgressPercent(order, processName);
+    const manualStatus = String(order?.process_status_overrides?.[processName] || "").trim().toLowerCase();
+    const explicitCompleted = Array.isArray(order?.completed_processes)
+      && order.completed_processes.includes(processName);
+
+    if (!isFocusOrder && (manualStatus === "completed" || explicitCompleted || stageProgress >= 100)) {
+      return;
+    }
+
+    let remainingFraction = 1;
+    if (!isFocusOrder) {
+      if (manualStatus === "ongoing") {
+        remainingFraction = 0.5;
+      } else if (stageProgress > 0) {
+        remainingFraction = Math.max(0.01, 1 - (stageProgress / 100));
+      }
+    }
+
+    const durationMinutes = Math.max(1, Math.round(baseDurationMinutes * remainingFraction));
 
     tasks.push({
       orderId,
@@ -265,6 +292,7 @@ function buildGlobalProcessTimeMap() {
   ));
 
   const availabilityByResource = new Map();
+  const availabilityByOrder = new Map();
   const processTimeMap = new Map();
 
   tasks.forEach((task) => {
@@ -273,9 +301,14 @@ function buildGlobalProcessTimeMap() {
     if (resourceAvailability && resourceAvailability > start) {
       start = normalizeToWorkDateTime(new Date(resourceAvailability.getTime()));
     }
+    const orderAvailability = availabilityByOrder.get(task.orderId);
+    if (orderAvailability && orderAvailability > start) {
+      start = normalizeToWorkDateTime(new Date(orderAvailability.getTime()));
+    }
 
     const end = addWorkingMinutes(start, task.durationMinutes);
     availabilityByResource.set(task.resourceKey, new Date(end.getTime()));
+    availabilityByOrder.set(task.orderId, new Date(end.getTime()));
     processTimeMap.set(`${task.orderId}|${task.processName}`, {
       start,
       end,
@@ -373,13 +406,29 @@ function getNextPendingProcess(order) {
   return getProgressSnapshot(order).nextProcessName;
 }
 
-function getProcessProgressPercent(orderProgress, processName) {
+function getProcessProgressPercent(orderOrProgress, processName) {
+  if (orderOrProgress && typeof orderOrProgress === "object") {
+    const overrides = orderOrProgress.process_status_overrides;
+    if (overrides && typeof overrides === "object" && Object.keys(overrides).length > 0) {
+      const manualStatus = String(overrides[processName] || "").trim().toLowerCase();
+      if (manualStatus === "completed") {
+        return 100;
+      }
+      if (manualStatus === "ongoing") {
+        return 50;
+      }
+      return 0;
+    }
+  }
+
   const stage = getProcessRange(processName);
   if (!stage) {
     return 0;
   }
 
-  const progress = Number(orderProgress) || 0;
+  const progress = Number(
+    typeof orderOrProgress === "object" ? getNormalizedProgress(orderOrProgress) : orderOrProgress
+  ) || 0;
   if (progress <= stage.start) {
     return 0;
   }
@@ -422,16 +471,56 @@ function calculateDateProgress(order) {
   return Math.min(100, (100 / totalDays) * elapsedDays);
 }
 
+function calculateManualStatusProgress(order) {
+  const overrides = order?.process_status_overrides;
+  if (!overrides || typeof overrides !== "object") {
+    return null;
+  }
+
+  const hasManualStatuses = PROCESS_FLOW.some((process) => (
+    typeof overrides[process.name] === "string" && overrides[process.name].trim()
+  ));
+  if (!hasManualStatuses) {
+    return null;
+  }
+
+  let progress = 0;
+  PROCESS_FLOW.forEach((process) => {
+    const status = String(overrides[process.name] || "").trim().toLowerCase();
+    if (status === "completed") {
+      progress += MANUAL_STATUS_COMPLETED_STEP;
+    } else if (status === "ongoing") {
+      progress += MANUAL_STATUS_ONGOING_STEP;
+    }
+  });
+
+  return Math.max(0, Math.min(100, Number(progress.toFixed(2))));
+}
+
 function getNormalizedProgress(order) {
   if (isStatusCompleted(order)) {
     return 100;
   }
 
   const dateProgress = calculateDateProgress(order);
-  if (dateProgress === null) {
-    return Math.max(0, Math.min(99, Number(order?.progress) || 0));
+  const manualStatusProgress = calculateManualStatusProgress(order);
+
+  if (dateProgress !== null && manualStatusProgress !== null) {
+    return Math.max(
+      0,
+      Math.min(100, Math.max(Number(dateProgress) || 0, Number(manualStatusProgress) || 0))
+    );
   }
-  return Math.max(0, Math.min(100, dateProgress));
+
+  if (dateProgress !== null) {
+    return Math.max(0, Math.min(100, Number(dateProgress) || 0));
+  }
+
+  if (manualStatusProgress !== null) {
+    return Math.max(0, Math.min(100, Number(manualStatusProgress) || 0));
+  }
+
+  return Math.max(0, Math.min(99, Number(order?.progress) || 0));
 }
 
 function isCompleted(order) {
@@ -1020,7 +1109,7 @@ function calculateStageUtilizations(orders) {
   return PROCESS_FLOW.map((process) => {
     const weightedProgress = orders.reduce((sum, order) => {
       const weight = Number(order.quantity) || 1;
-      const processProgress = getProcessProgressPercent(getNormalizedProgress(order), process.name);
+      const processProgress = getProcessProgressPercent(order, process.name);
       return sum + processProgress * weight;
     }, 0);
 
@@ -1226,13 +1315,6 @@ function renderOrderRow(order) {
       <td class="p-2 text-center">${order.quantity}</td>
       <td class="p-2 text-center font-bold whitespace-nowrap">${order.color || "N/A"}</td>
       <td class="p-2 text-center font-semibold">${progress.toFixed(0)}%</td>
-      <td class="p-2">
-        <div class="w-full rounded-lg h-6 relative overflow-hidden" style="min-width: 160px; background: #FFCF71;">
-          <div class="gantt-bar ${effectivePriority === "HIGH" ? "priority" : ""}" style="width: ${progress}%; height: 100%;">
-            <div class="gantt-bar-text">${progress.toFixed(0)}%</div>
-          </div>
-        </div>
-      </td>
       <td class="p-2 no-print">
         <button
           onclick="openProjectView(${order.id})"
@@ -1285,7 +1367,7 @@ function renderOrdersTable(orders) {
 
   if (!activeOrders.length) {
     ordersTable.innerHTML =
-      '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">No active orders right now.</td></tr>';
+      '<tr><td colspan="11" class="p-4 text-center" style="color: #B6771D;">No active orders right now.</td></tr>';
     updateOrdersPagination(0);
   } else {
     const totalPages = Math.max(1, Math.ceil(activeOrders.length / ORDERS_PAGE_SIZE));
@@ -1357,7 +1439,7 @@ async function loadOrders() {
     refreshActiveProjectView();
     if (!fallbackOrders.length) {
       ordersTable.innerHTML =
-        '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
+        '<tr><td colspan="11" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
       if (completedOrdersTable) {
         completedOrdersTable.innerHTML =
           '<tr><td colspan="4" class="p-4 text-center" style="color: #B6771D;">Failed to load completed orders.</td></tr>';
@@ -1549,21 +1631,50 @@ function openProjectView(orderId, options = {}) {
   const orderStartDate = parseDate(order.start_date) || parseDate(new Date());
   const orderEndDate = parseDate(order.completion_date) || orderStartDate;
   const msPerDay = 1000 * 60 * 60 * 24;
-  let totalDays = Math.max(1, Math.ceil((orderEndDate - orderStartDate) / msPerDay));
-
   const scheduleByProcess = globalMachineSchedule?.[String(orderId)] || {};
-  PROCESS_FLOW.forEach((process) => {
-    const stage = scheduleByProcess?.[process.name];
+  const globalProcessTimeMap = buildGlobalProcessTimeMap(orderId);
+
+  const orderGlobalStartDates = PROCESS_FLOW.map((process) => {
+    const timing = globalProcessTimeMap.get(`${order.id}|${process.name}`);
+    return timing?.start ? parseDate(timing.start) : null;
+  }).filter(Boolean);
+  const timelineAnchorDate = orderGlobalStartDates.length
+    ? new Date(Math.min(...orderGlobalStartDates.map((date) => date.getTime())))
+    : orderStartDate;
+  const timelineAnchorIso = formatDateISO(timelineAnchorDate);
+
+  const getScheduledDayWindow = (processName) => {
+    const globalTiming = globalProcessTimeMap.get(`${order.id}|${processName}`);
+    if (globalTiming?.start && globalTiming?.end) {
+      const stageStart = parseDate(globalTiming.start);
+      const stageEnd = parseDate(globalTiming.end);
+      if (stageStart && stageEnd) {
+        const startOffset = Math.max(0, Math.floor((stageStart - timelineAnchorDate) / msPerDay));
+        const endOffset = Math.max(startOffset + 1, Math.ceil((stageEnd - timelineAnchorDate) / msPerDay));
+        return { startOffset, endOffset };
+      }
+    }
+
+    const stage = scheduleByProcess?.[processName];
     if (!stage) {
-      return;
+      return null;
     }
+    const stageStart = parseDate(stage.start);
     const stageEnd = parseDate(stage.end);
-    if (!stageEnd) {
-      return;
+    if (!stageStart || !stageEnd) {
+      return null;
     }
-    const endOffset = Math.ceil((stageEnd - orderStartDate) / msPerDay);
-    if (Number.isFinite(endOffset) && endOffset > totalDays) {
-      totalDays = endOffset;
+
+    const startOffset = Math.max(0, Math.floor((stageStart - timelineAnchorDate) / msPerDay));
+    const endOffset = Math.max(startOffset + 1, Math.ceil((stageEnd - timelineAnchorDate) / msPerDay));
+    return { startOffset, endOffset };
+  };
+
+  let totalDays = Math.max(1, Math.ceil((orderEndDate - timelineAnchorDate) / msPerDay));
+  PROCESS_FLOW.forEach((process) => {
+    const stageWindow = getScheduledDayWindow(process.name);
+    if (stageWindow && Number.isFinite(stageWindow.endOffset) && stageWindow.endOffset > totalDays) {
+      totalDays = stageWindow.endOffset;
     }
   });
 
@@ -1587,22 +1698,6 @@ function openProjectView(orderId, options = {}) {
     allocatedMinutes += minutes;
     return minutes;
   });
-
-  const getScheduledDayWindow = (processName) => {
-    const stage = scheduleByProcess?.[processName];
-    if (!stage) {
-      return null;
-    }
-    const stageStart = parseDate(stage.start);
-    const stageEnd = parseDate(stage.end);
-    if (!stageStart || !stageEnd) {
-      return null;
-    }
-
-    const startOffset = Math.max(0, Math.floor((stageStart - orderStartDate) / msPerDay));
-    const endOffset = Math.max(startOffset + 1, Math.ceil((stageEnd - orderStartDate) / msPerDay));
-    return { startOffset, endOffset };
-  };
 
   let cumulativePercent = 0;
   const productionRows = PROCESS_FLOW
@@ -1660,21 +1755,22 @@ function openProjectView(orderId, options = {}) {
     };
   });
 
-  const normalizedProgress = getNormalizedProgress(order);
   const statusOverrides = (
     order && typeof order.process_status_overrides === "object" && order.process_status_overrides
       ? order.process_status_overrides
       : {}
   );
+  const hasManualStatusOverrides = Object.keys(statusOverrides).length > 0;
 
   const getProcessStatus = (processName) => {
     const manualStatus = String(statusOverrides?.[processName] || "").trim();
-    if (PROCESS_STATUS_OPTIONS.includes(manualStatus)) {
-      const style = getStatusStyle(manualStatus);
-      return { status: manualStatus, color: style.color, textColor: style.textColor };
+    if (hasManualStatusOverrides) {
+      const normalizedManualStatus = PROCESS_STATUS_OPTIONS.includes(manualStatus) ? manualStatus : "Pending";
+      const style = getStatusStyle(normalizedManualStatus);
+      return { status: normalizedManualStatus, color: style.color, textColor: style.textColor };
     }
 
-    const processProgress = getProcessProgressPercent(normalizedProgress, processName);
+    const processProgress = getProcessProgressPercent(order, processName);
     if (processProgress >= 100) {
       return { status: "Completed", color: "#7B542F", textColor: "#ffffff" };
     }
@@ -1688,7 +1784,6 @@ function openProjectView(orderId, options = {}) {
     return { status: "Pending", color: "#FFCF71", textColor: "#7B542F" };
   };
 
-  const globalProcessTimeMap = buildGlobalProcessTimeMap();
   let scheduleCursor = 0;
   const assignmentRows = orderAssignments
     .map((assignment, index) => {
@@ -1701,8 +1796,8 @@ function openProjectView(orderId, options = {}) {
       let startInfo;
       let endInfo;
       if (globalTiming?.start && globalTiming?.end) {
-        startInfo = formatProjectDateTimeLabel(order.start_date, globalTiming.start);
-        endInfo = formatProjectDateTimeLabel(order.start_date, globalTiming.end);
+        startInfo = formatProjectDateTimeLabel(timelineAnchorIso, globalTiming.start);
+        endInfo = formatProjectDateTimeLabel(timelineAnchorIso, globalTiming.end);
       } else {
         let processStartOffset = scheduleCursor;
         if (scheduledWindow) {
