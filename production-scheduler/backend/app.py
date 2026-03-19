@@ -554,6 +554,8 @@ def create_order():
 
     if end_date < start_date_obj:
         return jsonify({"error": "Completion date cannot be earlier than start date."}), 400
+    if (end_date - start_date_obj).days < 7:
+        return jsonify({"error": "Deadline must be at least 7 days after the start date."}), 400
 
     # Create and persist a new order record.
     orders = load_orders()

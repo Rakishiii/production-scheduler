@@ -9,6 +9,7 @@ let globalOrders = [];
 let activeProjectOrderId = null;
 const DEADLINES_PAGE_SIZE = 4;
 const ORDERS_PAGE_SIZE = 10;
+const MIN_DEADLINE_DAYS = 7;
 let deadlinesPage = 1;
 let ordersTablePage = 1;
 let globalAttendance = [];
@@ -40,6 +41,7 @@ const PROCESS_STAGE_MAP = PROCESS_STAGE_RANGES.reduce((acc, stage) => {
 
 const orderForm = document.getElementById("orderForm");
 const ordersTable = document.getElementById("ordersTable");
+const completedOrdersTable = document.getElementById("completedOrdersTable");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 const demoDateInput = document.getElementById("demoDate");
 const completionDateInput = document.getElementById("completionDate");
@@ -61,6 +63,7 @@ const statPendingUnits = document.getElementById("statPendingUnits");
 const priorityBreakdown = document.getElementById("priorityBreakdown");
 const cabinetBreakdown = document.getElementById("cabinetBreakdown");
 const upcomingDeadlines = document.getElementById("upcomingDeadlines");
+const todayOperationsSummary = document.getElementById("todayOperationsSummary");
 const deadlinesPrevBtn = document.getElementById("deadlinesPrevBtn");
 const deadlinesNextBtn = document.getElementById("deadlinesNextBtn");
 const deadlinesPageInfo = document.getElementById("deadlinesPageInfo");
@@ -95,10 +98,17 @@ function parseDate(value) {
 }
 
 function getLocalDateISO() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  return formatDateISO(new Date());
+}
+
+function formatDateISO(dateLike) {
+  const date = dateLike instanceof Date ? new Date(dateLike.getTime()) : new Date(dateLike);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -138,38 +148,40 @@ function getProcessRange(processName) {
   return PROCESS_STAGE_MAP[processName] || null;
 }
 
-function getCompletedProcessList(order) {
-  if (!Array.isArray(order?.completed_processes)) {
-    return [];
+function getCurrentProcessFromProgress(progress) {
+  const numericProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+  for (const process of PROCESS_FLOW) {
+    const stage = getProcessRange(process.name);
+    if (!stage) {
+      continue;
+    }
+    if (numericProgress < stage.end || (numericProgress >= 100 && stage.end === 100)) {
+      return process.name;
+    }
   }
-
-  const allowed = new Set(PROCESS_FLOW.map((process) => process.name));
-  return order.completed_processes.filter((name, index, array) => (
-    allowed.has(name) && array.indexOf(name) === index
-  ));
-}
-
-function getNextPendingProcess(order) {
-  const completedSet = new Set(getCompletedProcessList(order));
-  const next = PROCESS_FLOW.find((process) => !completedSet.has(process.name));
-  return next ? next.name : null;
+  return null;
 }
 
 function getCompletedStageProgress(order) {
-  const completedSet = new Set(getCompletedProcessList(order));
-  let progress = 0;
+  const progress = getNormalizedProgress(order);
+  let completed = 0;
   for (const process of PROCESS_FLOW) {
-    if (completedSet.has(process.name)) {
-      progress += process.ratio;
+    const stage = getProcessRange(process.name);
+    if (!stage) {
+      continue;
+    }
+    if (progress >= stage.end) {
+      completed = stage.end;
     } else {
       break;
     }
   }
-  return progress;
+  return completed;
 }
 
 function getProgressSnapshot(order) {
-  if (isStatusCompleted(order)) {
+  const normalizedProgress = getNormalizedProgress(order);
+  if (normalizedProgress >= 100) {
     return {
       normalizedProgress: 100,
       activeProcessPercent: 100,
@@ -178,40 +190,37 @@ function getProgressSnapshot(order) {
     };
   }
 
-  const completedProgress = getCompletedStageProgress(order);
-  const nextProcessName = getNextPendingProcess(order);
-  const nextProcess = PROCESS_FLOW.find((process) => process.name === nextProcessName) || null;
-  if (!nextProcess) {
+  const nextProcessName = getCurrentProcessFromProgress(normalizedProgress);
+  const stage = nextProcessName ? getProcessRange(nextProcessName) : null;
+  if (!stage) {
     return {
-      normalizedProgress: 100,
-      activeProcessPercent: 100,
+      normalizedProgress,
+      activeProcessPercent: 0,
       nextProcessName: null,
       completedProgress: 100,
     };
   }
 
-  const dateProgress = calculateDateProgress(order);
-  const stageEnd = completedProgress + nextProcess.ratio;
-  const stageCap = stageEnd >= 100 ? 99 : stageEnd;
-  const projected = dateProgress === null ? completedProgress : dateProgress;
-  const normalizedProgress = Math.max(completedProgress, Math.min(stageCap, projected));
-
-  const ratio = nextProcess.ratio > 0 ? nextProcess.ratio : 1;
+  const stageSpan = Math.max(1, stage.end - stage.start);
   const activeProcessPercent = Math.max(
     0,
-    Math.min(99, ((normalizedProgress - completedProgress) / ratio) * 100)
+    Math.min(99, ((normalizedProgress - stage.start) / stageSpan) * 100)
   );
 
   return {
     normalizedProgress,
     activeProcessPercent,
     nextProcessName,
-    completedProgress,
+    completedProgress: stage.start,
   };
 }
 
 function getActiveProcessProgress(order) {
   return Math.round(getProgressSnapshot(order).activeProcessPercent);
+}
+
+function getNextPendingProcess(order) {
+  return getProgressSnapshot(order).nextProcessName;
 }
 
 function getProcessProgressPercent(orderProgress, processName) {
@@ -263,12 +272,20 @@ function calculateDateProgress(order) {
   return Math.min(100, (100 / totalDays) * elapsedDays);
 }
 
-function isCompleted(order) {
-  return isStatusCompleted(order) || getNormalizedProgress(order) >= 100;
+function getNormalizedProgress(order) {
+  if (isStatusCompleted(order)) {
+    return 100;
+  }
+
+  const dateProgress = calculateDateProgress(order);
+  if (dateProgress === null) {
+    return Math.max(0, Math.min(99, Number(order?.progress) || 0));
+  }
+  return Math.max(0, Math.min(100, dateProgress));
 }
 
-function getNormalizedProgress(order) {
-  return getProgressSnapshot(order).normalizedProgress;
+function isCompleted(order) {
+  return isStatusCompleted(order) || getNormalizedProgress(order) >= 100;
 }
 
 function getEffectivePriority(order) {
@@ -708,6 +725,105 @@ function renderUpcomingDeadlines(orders) {
   updateDeadlinesPagination(dueOrders.length);
 }
 
+function renderTodayOperationsSummary(orders) {
+  if (!todayOperationsSummary) {
+    return;
+  }
+
+  const referenceDate = parseDate(demoDateInput?.value) || parseDate(new Date());
+  if (!referenceDate) {
+    todayOperationsSummary.innerHTML = '<p class="text-sm" style="color: #B6771D;">No operations for today.</p>';
+    return;
+  }
+
+  const stageSummary = PROCESS_FLOW.map((process) => ({
+    name: process.name,
+    orders: [],
+    qty: 0,
+  }));
+  const summaryByName = new Map(stageSummary.map((item) => [item.name, item]));
+
+  const activeOrders = orders.filter((order) => !isCompleted(order));
+  activeOrders.forEach((order) => {
+    let matchedStage = false;
+    const scheduleByProcess = globalMachineSchedule?.[String(order.id)] || {};
+
+    PROCESS_FLOW.forEach((process) => {
+      const stageSchedule = scheduleByProcess?.[process.name];
+      if (!stageSchedule) {
+        return;
+      }
+      const stageStart = parseDate(stageSchedule.start);
+      const stageEnd = parseDate(stageSchedule.end);
+      if (!stageStart || !stageEnd) {
+        return;
+      }
+
+      const isActiveOnDay = referenceDate >= stageStart && referenceDate < stageEnd;
+      if (isActiveOnDay) {
+        const entry = summaryByName.get(process.name);
+        if (entry) {
+          entry.orders.push(order);
+          entry.qty += Number(order.quantity) || 0;
+          matchedStage = true;
+        }
+      }
+    });
+
+    if (matchedStage) {
+      return;
+    }
+
+    const progress = getNormalizedProgress(order);
+    const fallbackProcess = getCurrentProcessFromProgress(progress);
+    if (!fallbackProcess) {
+      return;
+    }
+    const entry = summaryByName.get(fallbackProcess);
+    if (!entry) {
+      return;
+    }
+    entry.orders.push(order);
+    entry.qty += Number(order.quantity) || 0;
+  });
+
+  const activeRows = stageSummary.filter((item) => item.orders.length);
+  if (!activeRows.length) {
+    const dateLabel = formatDateForDisplay(formatDateISO(referenceDate));
+    todayOperationsSummary.innerHTML = `
+      <p class="text-sm" style="color: #B6771D;">
+        No active operations scheduled for ${dateLabel}.
+      </p>
+    `;
+    return;
+  }
+
+  const rowsHtml = activeRows.map((item) => {
+    const fullList = item.orders
+      .map((order) => `${order.customer_name} (${order.cabinet_type}, Qty ${order.quantity})`)
+      .join(", ");
+
+    return `
+      <div class="rounded-lg p-3" style="border: 1px solid #FFCF71; background: #FFFBF3;">
+        <p class="text-sm font-semibold" style="color: #7B542F;">
+          ${item.name}: ${item.orders.length} project(s), ${item.qty} unit(s)
+        </p>
+        <p class="text-xs mt-1 leading-5" style="color: #B6771D;">
+          ${fullList || "No listed customers"}
+        </p>
+      </div>
+    `;
+  }).join("");
+
+  const dateLabel = formatDateForDisplay(formatDateISO(referenceDate));
+  todayOperationsSummary.innerHTML = `
+    <p class="text-xs mb-3" style="color: #7B542F;">Reference day: ${dateLabel}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      ${rowsHtml}
+    </div>
+  `;
+}
+
 function renderMachineUtilization(orders) {
   if (!machineUtilizationList) {
     return;
@@ -741,28 +857,10 @@ function calculateStageUtilizations(orders) {
   );
   const safeWeight = totalWeight || 1;
 
-  const getStageProgressForOrder = (order, processName) => {
-    if (isStatusCompleted(order)) {
-      return 100;
-    }
-
-    const completedSet = new Set(getCompletedProcessList(order));
-    if (completedSet.has(processName)) {
-      return 100;
-    }
-
-    const nextProcessName = getNextPendingProcess(order);
-    if (nextProcessName === processName) {
-      return getActiveProcessProgress(order);
-    }
-
-    return 0;
-  };
-
   return PROCESS_FLOW.map((process) => {
     const weightedProgress = orders.reduce((sum, order) => {
       const weight = Number(order.quantity) || 1;
-      const processProgress = getStageProgressForOrder(order, process.name);
+      const processProgress = getProcessProgressPercent(getNormalizedProgress(order), process.name);
       return sum + processProgress * weight;
     }, 0);
 
@@ -901,6 +999,7 @@ function renderDashboard(orders) {
 
   renderBreakdown(cabinetBreakdown, typeRows);
   renderUpcomingDeadlines(orders);
+  renderTodayOperationsSummary(orders);
 }
 
 function updateOrdersPagination(totalItems) {
@@ -938,37 +1037,37 @@ function renderOrderRow(order) {
   let priorityBadge = "";
   if (effectivePriority === "HIGH") {
     priorityBadge =
-      '<span class="px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: #FF9D00;">HIGH</span>';
+      '<span class="inline-flex items-center whitespace-nowrap px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: #FF9D00;">HIGH</span>';
   } else if (effectivePriority === "MEDIUM") {
     priorityBadge =
-      '<span class="px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: #B6771D;">MEDIUM</span>';
+      '<span class="inline-flex items-center whitespace-nowrap px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: #B6771D;">MEDIUM</span>';
   } else {
     priorityBadge =
-      '<span class="px-2 py-1 rounded-lg text-xs font-semibold" style="background: #FFCF71; color: #7B542F;">LOW</span>';
+      '<span class="inline-flex items-center whitespace-nowrap px-2 py-1 rounded-lg text-xs font-semibold" style="background: #FFCF71; color: #7B542F;">LOW</span>';
   }
 
   return `
     <tr
       class="border-b border-amber-100 hover:bg-amber-50"
-      style="cursor: pointer;"
+      style="vertical-align: middle; cursor: pointer;"
       onclick="openProjectView(${order.id})"
     >
       <td class="p-2">
-        <span class="px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: ${statusBg};">
+        <span class="inline-flex items-center whitespace-nowrap px-2 py-1 rounded-lg text-white text-xs font-semibold" style="background: ${statusBg};">
           ${statusText}
         </span>
       </td>
       <td class="p-2">${priorityBadge}</td>
       <td class="p-2 font-semibold">${order.cabinet_type}</td>
       <td class="p-2">${order.customer_name}</td>
-      <td class="p-2">${order.start_date}</td>
-      <td class="p-2">${order.completion_date}</td>
+      <td class="p-2 whitespace-nowrap">${order.start_date}</td>
+      <td class="p-2 whitespace-nowrap">${order.completion_date}</td>
       <td class="p-2 text-center">${days}</td>
       <td class="p-2 text-center">${order.quantity}</td>
-      <td class="p-2 text-center font-bold">${order.color || "N/A"}</td>
+      <td class="p-2 text-center font-bold whitespace-nowrap">${order.color || "N/A"}</td>
       <td class="p-2 text-center font-semibold">${progress.toFixed(0)}%</td>
       <td class="p-2">
-        <div class="w-full rounded-lg h-6 relative overflow-hidden" style="min-width: 150px; background: #FFCF71;">
+        <div class="w-full rounded-lg h-6 relative overflow-hidden" style="min-width: 160px; background: #FFCF71;">
           <div class="gantt-bar ${effectivePriority === "HIGH" ? "priority" : ""}" style="width: ${progress}%; height: 100%;">
             <div class="gantt-bar-text">${progress.toFixed(0)}%</div>
           </div>
@@ -1000,25 +1099,52 @@ function renderOrderRow(order) {
   `;
 }
 
+function renderCompletedOrderRow(order) {
+  const progress = getNormalizedProgress(order);
+  return `
+    <tr
+      class="border-b border-amber-100 hover:bg-amber-50"
+      style="vertical-align: middle; cursor: pointer;"
+      onclick="openProjectView(${order.id})"
+    >
+      <td class="p-3 whitespace-nowrap" style="color: #3f2a1c;">${order.customer_name}</td>
+      <td class="p-3 font-semibold" style="color: #7B542F;">${order.cabinet_type}</td>
+      <td class="p-3 whitespace-nowrap" style="color: #7B542F;">${order.completion_date}</td>
+      <td class="p-3 text-center font-semibold" style="color: #7B542F;">${progress.toFixed(0)}%</td>
+    </tr>
+  `;
+}
+
 function renderOrdersTable(orders) {
   if (!ordersTable) {
     return;
   }
 
-  if (!orders.length) {
+  const activeOrders = orders.filter((order) => !isCompleted(order));
+  const completedOrders = orders.filter((order) => isCompleted(order));
+
+  if (!activeOrders.length) {
     ordersTable.innerHTML =
-      '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">No orders yet. Add one above.</td></tr>';
+      '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">No active orders right now.</td></tr>';
     updateOrdersPagination(0);
-    return;
+  } else {
+    const totalPages = Math.max(1, Math.ceil(activeOrders.length / ORDERS_PAGE_SIZE));
+    ordersTablePage = Math.min(Math.max(1, ordersTablePage), totalPages);
+    const start = (ordersTablePage - 1) * ORDERS_PAGE_SIZE;
+    const pageItems = activeOrders.slice(start, start + ORDERS_PAGE_SIZE);
+    ordersTable.innerHTML = pageItems.map((order) => renderOrderRow(order)).join("");
+    updateOrdersPagination(activeOrders.length);
   }
 
-  const totalPages = Math.max(1, Math.ceil(orders.length / ORDERS_PAGE_SIZE));
-  ordersTablePage = Math.min(Math.max(1, ordersTablePage), totalPages);
-  const start = (ordersTablePage - 1) * ORDERS_PAGE_SIZE;
-  const pageItems = orders.slice(start, start + ORDERS_PAGE_SIZE);
-
-  ordersTable.innerHTML = pageItems.map((order) => renderOrderRow(order)).join("");
-  updateOrdersPagination(orders.length);
+  if (!completedOrdersTable) {
+    return;
+  }
+  if (!completedOrders.length) {
+    completedOrdersTable.innerHTML =
+      '<tr><td colspan="4" class="p-6 text-center" style="color: #B6771D;">No completed orders yet.</td></tr>';
+    return;
+  }
+  completedOrdersTable.innerHTML = completedOrders.map((order) => renderCompletedOrderRow(order)).join("");
 }
 
 async function loadOrders() {
@@ -1072,6 +1198,10 @@ async function loadOrders() {
     if (!fallbackOrders.length) {
       ordersTable.innerHTML =
         '<tr><td colspan="12" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
+      if (completedOrdersTable) {
+        completedOrdersTable.innerHTML =
+          '<tr><td colspan="4" class="p-4 text-center" style="color: #B6771D;">Failed to load completed orders.</td></tr>';
+      }
     }
   }
 }
@@ -1098,6 +1228,18 @@ if (orderForm) {
     }
     if (payload.completion_date < payload.start_date) {
       alert("Completion date cannot be earlier than the start date.");
+      return;
+    }
+    const startDateObj = parseDate(payload.start_date);
+    const completionDateObj = parseDate(payload.completion_date);
+    if (!startDateObj || !completionDateObj) {
+      alert("Invalid date selected.");
+      return;
+    }
+    const minimumDeadline = new Date(startDateObj.getTime());
+    minimumDeadline.setDate(minimumDeadline.getDate() + MIN_DEADLINE_DAYS);
+    if (completionDateObj < minimumDeadline) {
+      alert(`Deadline must be at least ${MIN_DEADLINE_DAYS} days from the start date.`);
       return;
     }
 
@@ -1197,61 +1339,6 @@ async function deleteOrder(id) {
   }
 }
 
-async function completeProcess(orderId, processName) {
-  const requestOptions = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ process: processName }),
-  };
-
-  const tryComplete = async () => {
-    return fetch(`${BACKEND_URL}/orders/${orderId}/complete-process`, requestOptions);
-  };
-
-  const wakeBackend = async () => {
-    try {
-      await fetch(`${BACKEND_URL}/orders`, { method: "GET" });
-    } catch (_ignored) {
-      // Best-effort wake-up request.
-    }
-  };
-
-  try {
-    let response;
-    try {
-      response = await tryComplete();
-    } catch (_networkError) {
-      await wakeBackend();
-      response = await tryComplete();
-    }
-
-    if (!response.ok) {
-      let errorMessage = "Failed to complete task.";
-      try {
-        const errorData = await response.json();
-        if (errorData?.error) {
-          errorMessage = errorData.error;
-        }
-      } catch (_ignored) {
-        // Keep default error message.
-      }
-      throw new Error(errorMessage);
-    }
-
-    await loadOrders();
-    openProjectView(orderId);
-  } catch (error) {
-    const message = String(error?.message || "");
-    if (message.toLowerCase().includes("failed to fetch")) {
-      alert("Backend is waking up or unreachable. Please wait a moment, then click Complete Task again.");
-      return;
-    }
-    alert(message || "Failed to complete task.");
-  }
-}
-
-window.completeProcess = completeProcess;
-
 function openProjectView(orderId, options = {}) {
   if (!projectView || !timelineSteps || !projectSubtitle) {
     return;
@@ -1335,15 +1422,14 @@ function openProjectView(orderId, options = {}) {
     };
   });
 
-  const completedProcesses = new Set(getCompletedProcessList(order));
-  const nextPendingProcess = getNextPendingProcess(order);
-  const activeProcessProgress = getActiveProcessProgress(order);
+  const normalizedProgress = getNormalizedProgress(order);
 
   const getProcessStatus = (processName) => {
-    if (completedProcesses.has(processName)) {
+    const processProgress = getProcessProgressPercent(normalizedProgress, processName);
+    if (processProgress >= 100) {
       return { status: "Completed", color: "#7B542F", textColor: "#ffffff" };
     }
-    if (nextPendingProcess === processName) {
+    if (processProgress > 0) {
       return {
         status: "Ongoing",
         color: "#FF9D00",
@@ -1361,17 +1447,6 @@ function openProjectView(orderId, options = {}) {
       const startInfo = formatWorkMinute(scheduleCursor);
       const endInfo = formatWorkMinute(scheduleCursor + durationMinutes);
       scheduleCursor += durationMinutes;
-      const canComplete = nextPendingProcess === assignment.process;
-      const escapedProcess = assignment.process.replace(/'/g, "\\'");
-      const actionContent = canComplete
-        ? `<button
-            onclick="completeProcess(${order.id}, '${escapedProcess}')"
-            class="px-2 py-1 rounded text-xs font-semibold"
-            style="background: #7B542F; color: #ffffff;"
-          >
-            Complete Task
-          </button>`
-        : '<span class="text-xs" style="color: #B6771D;">-</span>';
 
       return `
         <tr style="background: #FFFBF3;">
@@ -1383,9 +1458,6 @@ function openProjectView(orderId, options = {}) {
             <span class="px-2 py-1 rounded text-xs font-semibold" style="background: ${statusInfo.color}; color: ${statusInfo.textColor};">
               ${statusInfo.status}
             </span>
-          </td>
-          <td class="p-2 text-center" style="border: 1px solid #FFCF71;">
-            ${actionContent}
           </td>
         </tr>
       `;
@@ -1401,7 +1473,6 @@ function openProjectView(orderId, options = {}) {
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Finish Time</th>
           <th class="p-2 text-left" style="color: #7B542F; border: 1px solid #FFE4A3;">Assigned Resource</th>
           <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Status</th>
-          <th class="p-2 text-center" style="color: #7B542F; border: 1px solid #FFE4A3;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -1472,7 +1543,8 @@ if (ordersPrevBtn) {
 
 if (ordersNextBtn) {
   ordersNextBtn.addEventListener("click", () => {
-    const totalPages = Math.max(1, Math.ceil(globalOrders.length / ORDERS_PAGE_SIZE));
+    const activeCount = globalOrders.filter((order) => !isCompleted(order)).length;
+    const totalPages = Math.max(1, Math.ceil(activeCount / ORDERS_PAGE_SIZE));
     if (ordersTablePage < totalPages) {
       ordersTablePage += 1;
       renderOrdersTable(globalOrders);
@@ -1486,6 +1558,18 @@ setInterval(loadOrders, 5000);
 
 if (ordersTable) {
   ordersTable.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("[data-stop-row-click='true']")) {
+      event.stopPropagation();
+    }
+  });
+}
+
+if (completedOrdersTable) {
+  completedOrdersTable.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
@@ -1523,8 +1607,13 @@ function updateCompletionDateMin() {
   if (!completionDateInput) {
     return;
   }
-  const today = getLocalDateISO();
-  const minDate = demoDateInput?.value || today;
+  const startDate = parseDate(demoDateInput?.value) || parseDate(new Date());
+  if (!startDate) {
+    return;
+  }
+  const minimumCompletionDate = new Date(startDate.getTime());
+  minimumCompletionDate.setDate(minimumCompletionDate.getDate() + MIN_DEADLINE_DAYS);
+  const minDate = formatDateISO(minimumCompletionDate);
   completionDateInput.min = minDate;
   if (completionDateInput.value && completionDateInput.value < minDate) {
     completionDateInput.value = minDate;

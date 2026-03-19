@@ -513,6 +513,14 @@
             </div>
           </div>
 
+          <div class="mt-6 bg-white rounded-2xl p-6 shadow-lg" style="border: 2px solid #FFCF71;">
+            <h3 class="text-base font-semibold" style="color: #3f2a1c;">Today's Operations Summary</h3>
+            <p class="text-xs mt-1 mb-4" style="color: #B6771D;">Combined task list for the selected day across all active projects</p>
+            <div id="todayOperationsSummary">
+              <p class="text-sm" style="color: #B6771D;">No operations for today.</p>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
             <div class="bg-white rounded-2xl p-6 shadow-lg" style="border: 2px solid #FFCF71;">
               <h3 class="text-base font-semibold" style="color: #3f2a1c;">Priority Mix</h3>
@@ -645,45 +653,73 @@
             </form>
           </div>
 
-          <div class="bg-white rounded-2xl shadow-lg overflow-hidden print-full" style="border: 2px solid #FFCF71;">
-            <div class="flex justify-between items-center p-8 no-print" style="border-bottom: 2px solid #FFCF71;">
-              <div>
-                <h2 class="text-xl font-semibold" style="color: #7B542F;">Orders</h2>
-                <p class="text-sm mt-1" style="color: #B6771D;">All production orders</p>
+          <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div class="xl:col-span-3 bg-white rounded-2xl shadow-lg overflow-hidden print-full" style="border: 2px solid #FFCF71;">
+              <div class="flex justify-between items-center p-8 no-print" style="border-bottom: 2px solid #FFCF71;">
+                <div>
+                  <h2 class="text-xl font-semibold" style="color: #7B542F;">Active Orders</h2>
+                  <p class="text-sm mt-1" style="color: #B6771D;">Orders currently in progress</p>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[1180px] text-sm">
+                  <thead>
+                    <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Status</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Priority</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Product</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Customer</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Start</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">End</th>
+                      <th class="text-center p-4 font-semibold" style="color: #7B542F;">Days</th>
+                      <th class="text-center p-4 font-semibold" style="color: #7B542F;">Qty</th>
+                      <th class="text-center p-4 font-semibold" style="color: #7B542F;">Color</th>
+                      <th class="text-center p-4 font-semibold" style="color: #7B542F;">Progress</th>
+                      <th class="text-left p-4 font-semibold" style="color: #7B542F;">Timeline</th>
+                      <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ordersTable" class="divide-y divide-slate-200">
+                    <tr>
+                      <td colspan="12" class="p-8 text-center" style="color: #B6771D;">
+                        Loading orders...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-controls p-4 no-print" style="border-top: 1px solid #FFCF71;">
+                <button id="ordersPrevBtn" type="button" class="pagination-btn">Prev</button>
+                <span id="ordersPageInfo" class="pagination-info">Page 1 of 1</span>
+                <button id="ordersNextBtn" type="button" class="pagination-btn">Next</button>
               </div>
             </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b" style="background: linear-gradient(90deg, #FFCF71, #FFE8B8); border-bottom: 2px solid #B6771D;">
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Status</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Priority</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Product</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Customer</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Start</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">End</th>
-                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Days</th>
-                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Qty</th>
-                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Color</th>
-                    <th class="text-center p-4 font-semibold" style="color: #7B542F;">Progress</th>
-                    <th class="text-left p-4 font-semibold" style="color: #7B542F;">Timeline</th>
-                    <th class="text-left p-4 font-semibold no-print" style="color: #7B542F;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="ordersTable" class="divide-y divide-slate-200">
-                  <tr>
-                    <td colspan="12" class="p-8 text-center" style="color: #B6771D;">
-                      Loading orders...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pagination-controls p-4 no-print" style="border-top: 1px solid #FFCF71;">
-              <button id="ordersPrevBtn" type="button" class="pagination-btn">Prev</button>
-              <span id="ordersPageInfo" class="pagination-info">Page 1 of 1</span>
-              <button id="ordersNextBtn" type="button" class="pagination-btn">Next</button>
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden no-print" style="border: 2px solid #FFCF71;">
+              <div class="p-6" style="border-bottom: 2px solid #FFCF71;">
+                <h3 class="text-lg font-semibold" style="color: #7B542F;">Completed Orders</h3>
+                <p class="text-xs mt-1" style="color: #B6771D;">Finished projects</p>
+              </div>
+              <div class="overflow-auto" style="max-height: 520px;">
+                <table class="w-full text-xs">
+                  <thead>
+                    <tr style="background: linear-gradient(90deg, #FFE8B8, #FFF2D6); border-bottom: 1px solid #E7C777;">
+                      <th class="text-left p-3 font-semibold" style="color: #7B542F;">Customer</th>
+                      <th class="text-left p-3 font-semibold" style="color: #7B542F;">Product</th>
+                      <th class="text-left p-3 font-semibold" style="color: #7B542F;">End</th>
+                      <th class="text-center p-3 font-semibold" style="color: #7B542F;">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody id="completedOrdersTable" class="divide-y divide-amber-100">
+                    <tr>
+                      <td colspan="4" class="p-6 text-center" style="color: #B6771D;">
+                        No completed orders yet.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
