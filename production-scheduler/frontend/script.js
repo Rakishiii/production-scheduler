@@ -84,6 +84,7 @@ const WORKDAY_END_MINUTES = 16 * 60; // 16:00
 const WORKDAY_MORNING_MINUTES = WORKDAY_LUNCH_START_MINUTES - WORKDAY_START_MINUTES; // 4 hours
 const WORKDAY_AFTERNOON_MINUTES = WORKDAY_END_MINUTES - WORKDAY_LUNCH_END_MINUTES; // 3 hours
 const WORKDAY_MINUTES = WORKDAY_MORNING_MINUTES + WORKDAY_AFTERNOON_MINUTES; // 7 productive hours
+const PROCESS_STATUS_OPTIONS = ["Completed", "Ongoing", "Pending"];
 
 function parseDate(value) {
   if (!value) {
@@ -376,6 +377,16 @@ function formatAssignedResource(assignment) {
     return worker;
   }
   return "Manual Team";
+}
+
+function getStatusStyle(status) {
+  if (status === "Completed") {
+    return { color: "#7B542F", textColor: "#ffffff" };
+  }
+  if (status === "Ongoing") {
+    return { color: "#FF9D00", textColor: "#ffffff" };
+  }
+  return { color: "#FFCF71", textColor: "#7B542F" };
 }
 
 function refreshActiveProjectView() {
@@ -1339,6 +1350,36 @@ async function deleteOrder(id) {
   }
 }
 
+async function updateProcessStatus(orderId, processName, status) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/orders/${orderId}/process-status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ process: processName, status }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Failed to update process status.";
+      try {
+        const payload = await response.json();
+        if (payload?.error) {
+          errorMessage = payload.error;
+        }
+      } catch (_ignored) {
+        // Keep fallback message.
+      }
+      throw new Error(errorMessage);
+    }
+
+    await loadOrders();
+    openProjectView(orderId, { scroll: false });
+  } catch (error) {
+    alert(error.message || "Failed to update process status.");
+  }
+}
+
+window.updateProcessStatus = updateProcessStatus;
+
 function openProjectView(orderId, options = {}) {
   if (!projectView || !timelineSteps || !projectSubtitle) {
     return;
@@ -1423,8 +1464,19 @@ function openProjectView(orderId, options = {}) {
   });
 
   const normalizedProgress = getNormalizedProgress(order);
+  const statusOverrides = (
+    order && typeof order.process_status_overrides === "object" && order.process_status_overrides
+      ? order.process_status_overrides
+      : {}
+  );
 
   const getProcessStatus = (processName) => {
+    const manualStatus = String(statusOverrides?.[processName] || "").trim();
+    if (PROCESS_STATUS_OPTIONS.includes(manualStatus)) {
+      const style = getStatusStyle(manualStatus);
+      return { status: manualStatus, color: style.color, textColor: style.textColor };
+    }
+
     const processProgress = getProcessProgressPercent(normalizedProgress, processName);
     if (processProgress >= 100) {
       return { status: "Completed", color: "#7B542F", textColor: "#ffffff" };
@@ -1447,6 +1499,10 @@ function openProjectView(orderId, options = {}) {
       const startInfo = formatWorkMinute(scheduleCursor);
       const endInfo = formatWorkMinute(scheduleCursor + durationMinutes);
       scheduleCursor += durationMinutes;
+      const escapedProcess = assignment.process.replace(/'/g, "\\'");
+      const statusOptions = PROCESS_STATUS_OPTIONS.map((option) => (
+        `<option value="${option}" ${option === statusInfo.status ? "selected" : ""}>${option}</option>`
+      )).join("");
 
       return `
         <tr style="background: #FFFBF3;">
@@ -1455,9 +1511,13 @@ function openProjectView(orderId, options = {}) {
           <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${endInfo.label}</td>
           <td class="p-2" style="color: #7B542F; border: 1px solid #FFCF71;">${formatAssignedResource(assignment)}</td>
           <td class="p-2 text-center" style="border: 1px solid #FFCF71;">
-            <span class="px-2 py-1 rounded text-xs font-semibold" style="background: ${statusInfo.color}; color: ${statusInfo.textColor};">
-              ${statusInfo.status}
-            </span>
+            <select
+              onchange="updateProcessStatus(${order.id}, '${escapedProcess}', this.value)"
+              class="px-2 py-1 rounded text-xs font-semibold focus:outline-none focus:ring-2"
+              style="border: 1px solid #FFCF71; background: ${statusInfo.color}; color: ${statusInfo.textColor}; --tw-ring-color: #FF9D00;"
+            >
+              ${statusOptions}
+            </select>
           </td>
         </tr>
       `;

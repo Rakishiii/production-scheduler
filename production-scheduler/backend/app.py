@@ -23,6 +23,7 @@ PROCESS_FLOW = [
 ]
 PROCESS_NAMES = [process["name"] for process in PROCESS_FLOW]
 PROCESS_RATIO_MAP = {process["name"]: process["ratio"] for process in PROCESS_FLOW}
+PROCESS_STATUS_VALUES = {"Completed", "Ongoing", "Pending"}
 RESOURCE_CATALOG = [
     {"id": "MO1", "role": "Machine Operator"},
     {"id": "MO2", "role": "Machine Operator"},
@@ -199,6 +200,26 @@ def normalize_order_state(order):
     order["progress"] = progress
     order["status"] = "Completed" if next_process is None else "In Progress"
     return order
+
+
+def normalize_process_status_overrides(order):
+    """Keep manual process status overrides in a valid shape."""
+    raw_overrides = order.get("process_status_overrides")
+    if not isinstance(raw_overrides, dict):
+        order["process_status_overrides"] = {}
+        return True
+
+    normalized = {}
+    for process_name, status_value in raw_overrides.items():
+        if process_name not in PROCESS_NAMES:
+            continue
+        status = str(status_value or "").strip().title()
+        if status in PROCESS_STATUS_VALUES:
+            normalized[process_name] = status
+
+    changed = normalized != raw_overrides
+    order["process_status_overrides"] = normalized
+    return changed
 
 
 def sanitize_order_dates(order):
@@ -507,6 +528,8 @@ def get_orders():
     for order in orders:
         if sanitize_order_dates(order):
             orders_changed = True
+        if normalize_process_status_overrides(order):
+            orders_changed = True
         normalize_order_state(order)
         apply_priority_settings(order, today)
 
@@ -586,10 +609,12 @@ def create_order():
         "progress": payload.get("progress", 0),
         "completed_processes": payload.get("completed_processes", []),
         "active_process_progress": payload.get("active_process_progress", 0),
+        "process_status_overrides": payload.get("process_status_overrides", {}),
         "priority": priority,
         "machines": machines
     }
     normalize_order_state(order)
+    normalize_process_status_overrides(order)
     apply_priority_settings(order, today)
 
     orders.append(order)
@@ -670,6 +695,29 @@ def update_process_progress(order_id):
     order["active_process_progress"] = int(round(clamp_percent(numeric_percent)))
     normalize_order_state(order)
     apply_priority_settings(order, datetime.now().date())
+    save_orders(orders)
+    return jsonify(order)
+
+
+@app.route("/orders/<int:order_id>/process-status", methods=["POST"])
+def update_process_status(order_id):
+    """Set a manual display status for one process of an order."""
+    payload = request.get_json(silent=True) or {}
+    process_name = str(payload.get("process", "")).strip()
+    status = str(payload.get("status", "")).strip().title()
+
+    if process_name not in PROCESS_NAMES:
+        return jsonify({"error": "Invalid process name."}), 400
+    if status not in PROCESS_STATUS_VALUES:
+        return jsonify({"error": "Status must be Completed, Ongoing, or Pending."}), 400
+
+    orders = load_orders()
+    order = next((item for item in orders if item.get("id") == order_id), None)
+    if not order:
+        return jsonify({"error": "Order not found."}), 404
+
+    normalize_process_status_overrides(order)
+    order.setdefault("process_status_overrides", {})[process_name] = status
     save_orders(orders)
     return jsonify(order)
 
