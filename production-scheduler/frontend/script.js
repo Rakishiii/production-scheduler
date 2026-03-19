@@ -1353,6 +1353,18 @@ function renderCompletedOrderRow(order) {
       <td class="p-3 font-semibold" style="color: #7B542F;">${order.cabinet_type}</td>
       <td class="p-3 whitespace-nowrap" style="color: #7B542F;">${order.completion_date}</td>
       <td class="p-3 text-center font-semibold" style="color: #7B542F;">${progress.toFixed(0)}%</td>
+      <td class="p-3 text-center no-print">
+        <button
+          onclick="deleteOrder(${order.id})"
+          class="px-2 py-1 rounded-lg text-white text-xs font-semibold"
+          style="background: #7B542F;"
+          data-stop-row-click="true"
+          onmouseover="this.style.background='#B6771D'"
+          onmouseout="this.style.background='#7B542F'"
+        >
+          Delete
+        </button>
+      </td>
     </tr>
   `;
 }
@@ -1383,7 +1395,7 @@ function renderOrdersTable(orders) {
   }
   if (!completedOrders.length) {
     completedOrdersTable.innerHTML =
-      '<tr><td colspan="4" class="p-6 text-center" style="color: #B6771D;">No completed orders yet.</td></tr>';
+      '<tr><td colspan="5" class="p-6 text-center" style="color: #B6771D;">No completed orders yet.</td></tr>';
     return;
   }
   completedOrdersTable.innerHTML = completedOrders.map((order) => renderCompletedOrderRow(order)).join("");
@@ -1442,7 +1454,7 @@ async function loadOrders() {
         '<tr><td colspan="11" class="p-4 text-center" style="color: #B6771D;">Failed to load orders. Check backend connection.</td></tr>';
       if (completedOrdersTable) {
         completedOrdersTable.innerHTML =
-          '<tr><td colspan="4" class="p-4 text-center" style="color: #B6771D;">Failed to load completed orders.</td></tr>';
+          '<tr><td colspan="5" class="p-4 text-center" style="color: #B6771D;">Failed to load completed orders.</td></tr>';
       }
     }
   }
